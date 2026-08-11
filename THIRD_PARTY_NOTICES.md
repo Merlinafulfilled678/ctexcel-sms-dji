@@ -20,6 +20,6 @@
 - PowerShell 安装器：MIT License 及其第三方声明。
 - Quectel/DJI 驱动：权利归对应厂商所有。
 
-公开仓库不包含上述安装器、wheel、驱动或生成的迁移 EXE。构建者必须从授权来源自行取得载荷并遵守对应条款。
+公开源码仓库不包含上述安装器、wheel、驱动或生成的 EXE。构建者必须从授权来源自行取得载荷并遵守对应条款。公开 Release EXE 可内嵌已固定哈希并验签的 Python、PowerShell 和 wheel，同时保留本声明及 wheel 内许可证元数据；在确认再分发许可前不内嵌 Quectel/DJI 驱动。私人迁移 EXE 还可能包含用户依法取得的驱动和私人运行数据，不得公开。
 
 DJI、Quectel、CTExcel、Telegram、Python、PowerShell 及其他名称和商标归各自权利人所有。

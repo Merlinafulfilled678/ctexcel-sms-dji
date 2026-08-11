@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from carrier_profile import ACTIVE_CARRIER, ServiceSms
+from config_store import ConfigStore, ConfigValidationError
 
 try:
     import requests
@@ -122,9 +123,11 @@ class TelegramBot(threading.Thread):
         balance_setter: Callable[[float], None],
         message_provider: Callable[[], list[dict[str, Any]]] | None = None,
         session: Any | None = None,
+        config_store: ConfigStore | None = None,
     ) -> None:
         super().__init__(name="sms-telegram-bot", daemon=True)
         self.config_path = Path(config_path)
+        self.config_store = config_store or ConfigStore(self.config_path)
         self.state_path = Path(state_path)
         self.archive_path = Path(archive_path)
         self.send_sms = send_sms
@@ -145,7 +148,7 @@ class TelegramBot(threading.Thread):
         self._offline_notice_sent = False
         self._commands_registered = False
 
-        self._config = _read_json_object(self.config_path)
+        self._config = self.config_store.read_runtime()
         telegram_config = (
             self._config.get("telegram")
             if isinstance(self._config, dict)
@@ -168,11 +171,10 @@ class TelegramBot(threading.Thread):
         )
 
         backend_available = session is not None or requests is not None
-        self.enabled = bool(
-            self.token
-            and self.proxy.startswith(("http://", "https://"))
-            and backend_available
-        )
+        configured_enabled = telegram_config.get("enabled")
+        if not isinstance(configured_enabled, bool):
+            configured_enabled = bool(self.token)
+        self.enabled = bool(configured_enabled and self.token and backend_available)
         self._session = session
         self._state: dict[str, Any] = {}
         self._pushed_archive_ids: set[str] = set()
@@ -185,7 +187,11 @@ class TelegramBot(threading.Thread):
         if hasattr(self._session, "trust_env"):
             self._session.trust_env = False
         if hasattr(self._session, "proxies"):
-            self._session.proxies.update({"http": self.proxy, "https": self.proxy})
+            self._session.proxies.clear()
+            if self.proxy:
+                self._session.proxies.update(
+                    {"http": self.proxy, "https": self.proxy}
+                )
 
         state_exists = self.state_path.exists()
         loaded_state = _read_json_object(self.state_path)
@@ -530,22 +536,14 @@ class TelegramBot(threading.Thread):
             self.logger.exception("新短信加入 Telegram 队列失败：%s", self._redact(exc))
 
     def _write_owner(self, chat_id: Any) -> bool:
-        if not isinstance(self._config, dict):
+        if isinstance(chat_id, bool) or not isinstance(chat_id, int):
             return False
-        telegram_config = self._config.get("telegram")
-        if not isinstance(telegram_config, dict):
-            telegram_config = {}
-            self._config["telegram"] = telegram_config
-        telegram_config["chat_id"] = chat_id
-        temporary = self.config_path.with_suffix(self.config_path.suffix + ".tmp")
         try:
-            with temporary.open("w", encoding="utf-8", newline="\n") as handle:
-                json.dump(self._config, handle, ensure_ascii=False, indent=2)
-                handle.write("\n")
-            os.replace(temporary, self.config_path)
-        except OSError as exc:
+            self.config_store.bind_telegram_owner(chat_id)
+        except (OSError, ConfigValidationError) as exc:
             self.logger.error("owner 绑定写入配置失败：%s", self._redact(exc))
             return False
+        self._config = self.config_store.read_runtime()
         self.chat_id = chat_id
         self.logger.info("Telegram owner 首次绑定完成")
         return True

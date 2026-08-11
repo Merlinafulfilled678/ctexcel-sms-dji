@@ -380,6 +380,24 @@ class TelegramBotLogicTests(unittest.TestCase):
         self.assertEqual(len(bot._outbox), 0)
         self.assertEqual(self.session.calls, [])
 
+    def test_explicit_enable_supports_direct_connection_and_disable_wins(self) -> None:
+        config = json.loads(self.config_path.read_text(encoding="utf-8"))
+        config["telegram"]["enabled"] = True
+        config["telegram"]["proxy"] = ""
+        self.config_path.write_text(
+            json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        direct_bot = self.make_bot()
+        self.assertTrue(direct_bot.enabled)
+        self.assertEqual(self.session.proxies, {})
+
+        config["telegram"]["enabled"] = False
+        self.config_path.write_text(
+            json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        disabled_bot = self.make_bot()
+        self.assertFalse(disabled_bot.enabled)
+
     def test_alerts_are_transition_and_daily_limited(self) -> None:
         bot = self.make_bot()
         bot.chat_id = 12345

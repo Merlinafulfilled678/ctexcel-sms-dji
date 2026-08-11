@@ -7,6 +7,7 @@ import math
 import os
 import queue
 import re
+import secrets
 import socket
 import subprocess
 import threading
@@ -22,6 +23,7 @@ import serial
 from flask import Flask, jsonify, request, send_from_directory
 from serial.tools import list_ports
 from carrier_profile import ACTIVE_CARRIER, parse_balance_amount
+from config_store import ConfigStore, ConfigValidationError
 from modem_profile import (
     ModemProfile,
     PortMatch,
@@ -42,22 +44,13 @@ SERVICE_ROOT_FINGERPRINT = hashlib.sha256(
 ).hexdigest()[:32]
 STATE_PATH = BASE_DIR / "state.json"
 ARCHIVE_PATH = BASE_DIR / "archive.jsonl"
+config_store = ConfigStore(CONFIG_PATH)
+CONFIG_CSRF_TOKEN = secrets.token_urlsafe(32)
 
 
 def load_own_number(config_path: Path) -> str:
-    """Load the private local number without making it a carrier-wide source fact."""
-    try:
-        raw = json.loads(config_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return ""
-    carrier = raw.get("carrier")
-    if not isinstance(carrier, dict):
-        return ""
-    value = str(carrier.get("own_number") or "").strip()
-    return value if re.fullmatch(r"\+[1-9][0-9]{7,14}", value) else ""
-
-
-OWN_NUMBER = load_own_number(CONFIG_PATH)
+    """Compatibility adapter for callers that only need the private local number."""
+    return ConfigStore(config_path).read_runtime()["carrier"]["own_number"]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SMS_TOOL_PORT", "7597"))
 SUPPORTED_AT_PORT_HINT = "Quectel USB AT Port"
@@ -1030,7 +1023,7 @@ class ModemWorker(threading.Thread):
                 for key in ("registration_domains", "errors", "ims"):
                     if isinstance(diagnostics.get(key), dict):
                         diagnostics[key] = dict(diagnostics[key])
-        status["own_number"] = OWN_NUMBER
+        status["own_number"] = config_store.read_runtime()["carrier"]["own_number"]
         status["carrier"] = ACTIVE_CARRIER.status_metadata()
         status["keepalive_days_left"] = self.state_store.keepalive_days_left()
         status["balance"] = self.state_store.balance_snapshot()
@@ -1529,7 +1522,8 @@ class ModemWorker(threading.Thread):
                 raise ATCommandError(detail) from restore_error
 
         # 发给自己不作为运营商活动记录；CTExcel 固定服务号码会正常记录。
-        if recipient != OWN_NUMBER:
+        own_number = config_store.read_runtime()["carrier"]["own_number"]
+        if recipient != own_number:
             self.state_store.record_outbound()
         self.message_store.record_outbound(recipient, text)
 
@@ -1642,18 +1636,43 @@ def telegram_status_snapshot() -> dict[str, Any]:
     return status
 
 
-telegram_bot = TelegramBot(
-    config_path=CONFIG_PATH,
-    state_path=BASE_DIR / "tg_state.json",
-    archive_path=ARCHIVE_PATH,
-    log_path=BASE_DIR / "app.log",
-    send_sms=lambda recipient, text: modem_worker.submit(
-        "send", {"to": recipient, "text": text}
-    ),
-    status_provider=telegram_status_snapshot,
-    balance_setter=state_store.record_manual_balance,
-    message_provider=message_store.notification_snapshot,
-)
+def create_telegram_bot() -> TelegramBot:
+    return TelegramBot(
+        config_path=CONFIG_PATH,
+        state_path=BASE_DIR / "tg_state.json",
+        archive_path=ARCHIVE_PATH,
+        log_path=BASE_DIR / "app.log",
+        send_sms=lambda recipient, text: modem_worker.submit(
+            "send", {"to": recipient, "text": text}
+        ),
+        status_provider=telegram_status_snapshot,
+        balance_setter=state_store.record_manual_balance,
+        message_provider=message_store.notification_snapshot,
+        config_store=config_store,
+    )
+
+
+telegram_bot = create_telegram_bot()
+runtime_started = False
+
+
+def apply_runtime_config(changed_fields: set[str]) -> bool:
+    """Apply a first-time Telegram config live; return whether restart is required."""
+    global telegram_bot
+    if not changed_fields.intersection({"telegram", "alerts"}):
+        return False
+    if not runtime_started:
+        return True
+    if telegram_bot.is_alive():
+        return True
+    replacement = create_telegram_bot()
+    telegram_bot = replacement
+    if replacement.enabled:
+        try:
+            replacement.start()
+        except Exception:
+            return True
+    return False
 
 app = Flask(__name__, static_folder=str(BASE_DIR / "static"), static_url_path="/static")
 app.json.ensure_ascii = False
@@ -1675,6 +1694,41 @@ def api_status() -> Any:
         "root_fingerprint": SERVICE_ROOT_FINGERPRINT,
     }
     return jsonify(status)
+
+
+@app.get("/api/config")
+def api_config_get() -> Any:
+    response = jsonify(
+        ok=True,
+        config=config_store.read_public(),
+        csrf_token=CONFIG_CSRF_TOKEN,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.post("/api/config")
+def api_config_post() -> Any:
+    supplied_token = request.headers.get("X-CTExcel-CSRF", "")
+    if not secrets.compare_digest(supplied_token, CONFIG_CSRF_TOKEN):
+        return jsonify(ok=False, error="配置请求校验失败，请刷新本地页面后重试"), 403
+    if not request.is_json:
+        return jsonify(ok=False, error="配置请求必须使用 JSON"), 415
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(ok=False, error="配置请求必须是 JSON 对象"), 400
+    try:
+        public_config = config_store.update_public(payload)
+    except ConfigValidationError as exc:
+        return jsonify(ok=False, error=str(exc), fields=exc.errors), 400
+    except OSError as exc:
+        return jsonify(ok=False, error=f"配置保存失败：{exc}"), 500
+    restart_required = apply_runtime_config(set(payload))
+    return jsonify(
+        ok=True,
+        config=public_config,
+        restart_required=restart_required,
+    )
 
 
 @app.post("/api/balance")
@@ -1746,6 +1800,7 @@ def port_is_available() -> bool:
 
 
 def main() -> None:
+    global runtime_started
     # pythonw 无控制台运行时 stdout/stderr 为 None,Flask 写日志会崩溃,重定向到文件
     if sys.stdout is None or sys.stderr is None:
         log_handle = open(BASE_DIR / "app.log", "a", encoding="utf-8", buffering=1)
@@ -1753,6 +1808,7 @@ def main() -> None:
         sys.stderr = sys.stderr or log_handle
     if not port_is_available():
         return
+    runtime_started = True
     modem_worker.start()
     try:
         wwan_monitor.start()
@@ -1766,6 +1822,7 @@ def main() -> None:
     try:
         app.run(host=HOST, port=PORT, debug=False, threaded=True, use_reloader=False)
     finally:
+        runtime_started = False
         telegram_bot.stop()
         wwan_monitor.stop()
         modem_worker.stop()

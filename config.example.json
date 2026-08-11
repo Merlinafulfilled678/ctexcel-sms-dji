@@ -3,9 +3,10 @@
     "own_number": ""
   },
   "telegram": {
+    "enabled": false,
     "token": "",
     "chat_id": null,
-    "proxy": "http://127.0.0.1:7897"
+    "proxy": ""
   },
   "alerts": {
     "low_balance_gbp": 2.0,

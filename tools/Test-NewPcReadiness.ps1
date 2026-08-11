@@ -5,7 +5,9 @@ param(
 
     [switch]$SkipDevice,
 
-    [switch]$SkipTelegramProxy
+    [switch]$SkipTelegramProxy,
+
+    [switch]$AllowMissingBundledDriver
 )
 
 Set-StrictMode -Version Latest
@@ -55,6 +57,7 @@ $requiredProjectFiles = @(
     'app.py',
     'modem_profile.py',
     'carrier_profile.py',
+    'config_store.py',
     'tg_bot.py',
     'requirements.txt',
     '启动短信工具.bat',
@@ -187,7 +190,11 @@ if ($driverFailures.Count -eq 0) {
         Add-Check FAIL 'Bundled AT driver' 'The driver catalog signature is not valid Microsoft WHCP.'
     }
 } else {
-    Add-Check FAIL 'Bundled AT driver' ($driverFailures -join '; ')
+    if ($AllowMissingBundledDriver) {
+        Add-Check WARN 'Bundled AT driver' 'The public package does not redistribute the Quectel driver; install an authorized copy separately if needed.'
+    } else {
+        Add-Check FAIL 'Bundled AT driver' ($driverFailures -join '; ')
+    }
 }
 
 if ($SkipDevice) {

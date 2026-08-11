@@ -21,6 +21,7 @@ Flask 后端只监听 `127.0.0.1:7597`，前端无外部 CDN。短信归档、�
 - Web 页面查看收件箱、已发送、余额、IMS、注册、信号和模块存储。
 - 向 `888` 发送 `BAL` 查询 CTExcel 余额；仅解析明确的现金余额字段，不根据发送记录推算扣费。
 - 可选 Telegram Bot：状态、历史、余额、二次确认发送、主动告警和重启去重。
+- 本地设置页面：号码、Telegram Token/本机代理和提醒阈值；Token 只写不回显。
 - 只读检测 DJI/Quectel 蜂窝网卡；应用不会建立移动数据连接。
 
 ### 安全边界
@@ -39,9 +40,22 @@ Flask 后端只监听 `127.0.0.1:7597`，前端无外部 CDN。短信归档、�
 - Python 3.14
 - DJI QDC507：`MI_02` 已绑定为 `Quectel USB AT Port`
 
-公开仓库不包含 Quectel 驱动、Python/PowerShell 安装包、wheel 或私人迁移 EXE。驱动获取与绑定边界见 [drivers/README.md](drivers/README.md)。
+公开源码仓库不提交 Quectel 驱动、Python/PowerShell 安装包、wheel 或私人迁移 EXE。Release 单 EXE 会内置固定哈希的官方 Python、PowerShell 和离线 wheel，但在确认再分发许可前不会包含 Quectel 驱动。驱动获取与绑定边界见 [drivers/README.md](drivers/README.md)。
 
 ### 安装
+
+#### 推荐：Release 单 EXE
+
+1. 在 GitHub 的 **Releases** 页面下载 `CTExcel-SMS-DJI-Setup-v*.exe` 和 `SHA256SUMS.txt`。
+2. 核对 EXE 的 SHA-256 后双击运行，确认安装目录并点击“开始安装”。安装器会默认选择可用的 NTFS 固定 D 盘；没有合适的 D 盘时自动回退到当前用户的本地应用目录。也可直接编辑路径或点击“浏览”选择其他本地 NTFS 固定盘目录。
+3. 允许安装器检查或补齐官方运行环境。基础安装不要求连接 DJI 模块。安装完成后可点击“配置并启动”，在本地页面填写可选号码、Telegram 和提醒设置。
+4. 真正收发短信前，插入模块与 SIM，并确保 `MI_02` 已使用获授权来源的 Quectel AT 驱动绑定为 `Quectel USB AT Port`。
+
+安装器全程离线，不发送短信、不创建开机启动，也不启用蜂窝数据。修复安装会保留 `config.json`、短信存档和状态。当前外层 EXE 没有商业代码签名，Windows SmartScreen 可能显示“未知发布者”；请只从本仓库 Release 下载并核对 SHA-256。
+
+卸载时先关闭短信工具，再双击安装目录中的 `卸载短信工具.bat`。默认选项会把配置、短信存档和状态备份到 `%LOCALAPPDATA%\CTExcel-SMS-DJI-Backups` 后删除程序；也可二次确认后全部删除。安装器补齐的 Python/PowerShell 可能被其他程序共用，因此卸载工具会保留它们。
+
+#### 从源码安装
 
 设备不需要在安装 Python 依赖时连接；真正运行和收发短信时才需要插入模块与 SIM。
 
@@ -53,12 +67,13 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --requirement .\requirements.txt
 ```
 
-在本地编辑 `config.json`：
+启动后可点击页面右上角“设置”，也可以在本地编辑 `config.json`：
 
 - `carrier.own_number`：可选，使用完整 E.164 号码；用于界面显示以及排除向本机发送的活跃记录。
 - `telegram.token`：可选，BotFather token；不要提交或粘贴到 issue。
+- `telegram.enabled`：是否启用 Telegram；留空代理时使用直连。
 - `telegram.chat_id`：可保持 `null`，第一条私聊会绑定唯一 owner。
-- `telegram.proxy`：可选 HTTP 代理，例如 `http://127.0.0.1:7897`。
+- `telegram.proxy`：可选本机 HTTP(S) 代理，例如 `http://127.0.0.1:7897`。
 
 `config.json`、短信归档、余额状态、Telegram 状态和日志都已被 `.gitignore` 排除。
 
@@ -113,16 +128,27 @@ http://127.0.0.1:7597/
 以下测试全部为离线测试：
 
 ```powershell
-python -m py_compile app.py modem_profile.py tg_bot.py carrier_profile.py diag_readonly.py
+python -m py_compile app.py config_store.py modem_profile.py tg_bot.py carrier_profile.py diag_readonly.py
 python test_carrier_logic.py
 python test_long_sms_logic.py
 python test_tg_logic.py
 python test_dji_qdc507_logic.py
+python test_config_store.py
+python test_config_api.py
+python test_config_ui.py
 python test_migration_assets.py
 python test_installer_assets.py
 ```
 
 公开源码检出中没有第三方二进制时，相关哈希测试会明确标记为跳过；如果本地放入了完整离线载荷，测试会校验其固定 SHA-256。
+
+维护者在本地准备好已固定哈希的离线载荷后，可运行：
+
+```powershell
+pwsh -NoProfile -File .\tools\Build-PublicInstaller.ps1 -Version 0.9.3-beta
+```
+
+构建器使用显式公开白名单、疑似 Telegram Token 扫描和 EXE 自检，并生成 `dist\SHA256SUMS.txt`。公开构建入口不会读取 `config.json`、短信存档或 Telegram 状态。
 
 ### 与上游资料的关系
 
@@ -153,6 +179,7 @@ The Flask backend listens only on `127.0.0.1:7597`, and the web interface uses n
 - Provides a local web interface for inbox, sent messages, balance, IMS, registration, signal, and module-storage status.
 - Queries the CTExcel balance by sending `BAL` to `888`; only an explicit cash-balance field is parsed, and charges are never estimated from local send history.
 - Offers an optional Telegram Bot for status, history, balance, confirmed sending, proactive alerts, and restart-safe deduplication.
+- Provides a local settings screen for the phone number, write-only Telegram token/local proxy, and alert thresholds.
 - Detects DJI/Quectel cellular network adapters in read-only mode; the application does not establish a mobile-data connection.
 
 ### Safety boundaries
@@ -171,9 +198,22 @@ The Flask backend listens only on `127.0.0.1:7597`, and the web interface uses n
 - Python 3.14
 - DJI QDC507 with `MI_02` bound as `Quectel USB AT Port`
 
-The public repository does not include Quectel drivers, Python/PowerShell installers, wheels, or a private migration EXE. See [drivers/README.md](drivers/README.md) for driver-acquisition and binding boundaries.
+The public source repository does not commit Quectel drivers, Python/PowerShell installers, wheels, or a private migration EXE. A Release EXE embeds the hash-pinned official Python and PowerShell installers plus the offline wheelhouse, but it does not include the Quectel driver until redistribution permission is confirmed. See [drivers/README.md](drivers/README.md) for driver-acquisition and binding boundaries.
 
 ### Installation
+
+#### Recommended: single-file Release installer
+
+1. Download `CTExcel-SMS-DJI-Setup-v*.exe` and `SHA256SUMS.txt` from the GitHub **Releases** page.
+2. Verify the EXE's SHA-256, run it, confirm the installation directory, and click **开始安装** (“Start installation”). The installer defaults to a suitable fixed NTFS `D:` drive, falls back to the current user's local application directory when no suitable `D:` drive exists, and lets you type or browse to another directory on a fixed local NTFS drive.
+3. Allow it to check or install the official runtime prerequisites. The DJI module is optional during the base installation. When installation finishes, click **配置并启动** (“Configure and start”) and complete the local settings page.
+4. Before sending or receiving SMS, connect the module and SIM and make sure `MI_02` is bound as a `Quectel USB AT Port` using a driver obtained from an authorized source.
+
+The installer works offline, sends no SMS, creates no Windows autostart entry, and does not enable cellular data. Repair installation preserves configuration, archives, and state. The outer EXE currently has no commercial code-signing certificate, so Windows SmartScreen may show “Unknown publisher.” Download it only from this repository's Releases and verify its SHA-256.
+
+To uninstall, close the SMS tool and double-click `卸载短信工具.bat` in the installation directory. The recommended option backs up configuration, SMS archives, and state under `%LOCALAPPDATA%\CTExcel-SMS-DJI-Backups` before removing the application. A separately confirmed option deletes everything. Python and PowerShell are retained because other applications may share them.
+
+#### Install from source
 
 The module does not need to be connected while installing Python dependencies. Connect the module and SIM only when you are ready to run the application and send or receive SMS messages.
 
@@ -185,12 +225,13 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --requirement .\requirements.txt
 ```
 
-Edit `config.json` locally:
+After startup, use the **设置** (“Settings”) button in the upper-right corner, or edit `config.json` locally:
 
 - `carrier.own_number`: optional; use the full E.164 number. It is used for display and to exclude messages sent to this SIM from the activity reference.
 - `telegram.token`: optional BotFather token. Never commit it or paste it into an issue.
+- `telegram.enabled`: enables Telegram; an empty proxy means a direct connection.
 - `telegram.chat_id`: may remain `null`; the first private chat binds the sole owner.
-- `telegram.proxy`: optional HTTP proxy, for example `http://127.0.0.1:7897`.
+- `telegram.proxy`: optional loopback HTTP(S) proxy, for example `http://127.0.0.1:7897`.
 
 `config.json`, SMS archives, balance state, Telegram state, and logs are excluded by `.gitignore`.
 
@@ -245,16 +286,27 @@ Never commit these files. Stop the service on the old computer before migrating 
 All commands below are offline tests:
 
 ```powershell
-python -m py_compile app.py modem_profile.py tg_bot.py carrier_profile.py diag_readonly.py
+python -m py_compile app.py config_store.py modem_profile.py tg_bot.py carrier_profile.py diag_readonly.py
 python test_carrier_logic.py
 python test_long_sms_logic.py
 python test_tg_logic.py
 python test_dji_qdc507_logic.py
+python test_config_store.py
+python test_config_api.py
+python test_config_ui.py
 python test_migration_assets.py
 python test_installer_assets.py
 ```
 
 When a public source checkout does not contain third-party binaries, the related hash checks explicitly report them as skipped. If the complete offline payload is placed into a local checkout, the tests verify its pinned SHA-256 hashes.
+
+After preparing the locally hash-pinned offline payload, maintainers can run:
+
+```powershell
+pwsh -NoProfile -File .\tools\Build-PublicInstaller.ps1 -Version 0.9.3-beta
+```
+
+The builder uses an explicit public allowlist, scans for Telegram-token patterns, self-tests the EXE, and writes `dist\SHA256SUMS.txt`. The public build entry point never reads `config.json`, SMS archives, or Telegram state.
 
 ### Relationship to upstream work
 

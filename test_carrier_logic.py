@@ -105,7 +105,10 @@ def load_own_number_function():
     ]
     if not nodes:
         raise AssertionError("app.py 缺少本机号码私有配置 seam")
-    namespace: dict[str, Any] = {"Path": Path, "json": json, "re": re}
+    namespace: dict[str, Any] = {
+        "Path": Path,
+        "ConfigStore": __import__("config_store").ConfigStore,
+    }
     selected = ast.Module(body=[tree.body[0], *nodes], type_ignores=[])
     exec(compile(selected, "app.py:selected", "exec"), namespace)
     return namespace["load_own_number"]

@@ -101,8 +101,13 @@ namespace CTExcelSmsDjiInstaller
         private readonly Label titleLabel;
         private readonly Label stepLabel;
         private readonly Label privacyLabel;
+        private readonly Label installPathLabel;
+        private readonly TextBox installPathTextBox;
+        private readonly Button browseInstallPathButton;
         private readonly ProgressBar progressBar;
         private readonly RichTextBox logBox;
+        private readonly Button startInstallButton;
+        private readonly Button configureButton;
         private readonly Button openFolderButton;
         private readonly Button closeButton;
         private bool running;
@@ -112,15 +117,18 @@ namespace CTExcelSmsDjiInstaller
 
         internal InstallerForm()
         {
-            Text = "CTExcel 短信工具 · DJI 迁移安装器";
-            ClientSize = new Size(760, 520);
-            MinimumSize = new Size(700, 480);
+            Text = String.Equals(PayloadInfo.PackageKind, "public", StringComparison.Ordinal)
+                ? "CTExcel 短信工具 · DJI 公开安装器"
+                : "CTExcel 短信工具 · DJI 私人迁移安装器";
+            ClientSize = new Size(760, 600);
+            MinimumSize = new Size(700, 560);
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.FromArgb(247, 249, 252);
             Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            SuspendLayout();
 
             titleLabel = new Label();
-            titleLabel.Text = "正在准备 CTExcel 短信工具";
+            titleLabel.Text = "安装 CTExcel 短信工具";
             titleLabel.Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold, GraphicsUnit.Point);
             titleLabel.ForeColor = Color.FromArgb(30, 42, 60);
             titleLabel.AutoSize = true;
@@ -132,22 +140,41 @@ namespace CTExcelSmsDjiInstaller
             privacyLabel.AutoSize = true;
             privacyLabel.Location = new Point(29, 62);
 
+            installPathLabel = new Label();
+            installPathLabel.Text = "安装目录";
+            installPathLabel.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
+            installPathLabel.AutoSize = true;
+            installPathLabel.Location = new Point(29, 94);
+
+            installPathTextBox = new TextBox();
+            installPathTextBox.Text = InstallerEngine.GetDefaultInstallPath();
+            installPathTextBox.Location = new Point(29, 117);
+            installPathTextBox.Size = new Size(590, 28);
+            installPathTextBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+            browseInstallPathButton = new Button();
+            browseInstallPathButton.Text = "浏览…";
+            browseInstallPathButton.Size = new Size(102, 30);
+            browseInstallPathButton.Location = new Point(629, 115);
+            browseInstallPathButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            browseInstallPathButton.Click += BrowseInstallPathButtonClick;
+
             stepLabel = new Label();
-            stepLabel.Text = "等待开始…";
+            stepLabel.Text = "确认安装目录后点击“开始安装”";
             stepLabel.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold, GraphicsUnit.Point);
             stepLabel.ForeColor = Color.FromArgb(28, 103, 196);
             stepLabel.AutoEllipsis = true;
-            stepLabel.Location = new Point(29, 96);
+            stepLabel.Location = new Point(29, 160);
             stepLabel.Size = new Size(700, 24);
 
             progressBar = new ProgressBar();
-            progressBar.Location = new Point(29, 126);
+            progressBar.Location = new Point(29, 190);
             progressBar.Size = new Size(702, 18);
-            progressBar.Style = ProgressBarStyle.Marquee;
-            progressBar.MarqueeAnimationSpeed = 28;
+            progressBar.Style = ProgressBarStyle.Continuous;
+            progressBar.Value = 0;
 
             logBox = new RichTextBox();
-            logBox.Location = new Point(29, 160);
+            logBox.Location = new Point(29, 224);
             logBox.Size = new Size(702, 292);
             logBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             logBox.ReadOnly = true;
@@ -156,39 +183,108 @@ namespace CTExcelSmsDjiInstaller
             logBox.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point);
             logBox.DetectUrls = false;
 
+            startInstallButton = new Button();
+            startInstallButton.Text = "开始安装";
+            startInstallButton.Size = new Size(126, 34);
+            startInstallButton.Location = new Point(29, 548);
+            startInstallButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            startInstallButton.Click += StartInstallButtonClick;
+
+            configureButton = new Button();
+            configureButton.Text = "配置并启动";
+            configureButton.Enabled = false;
+            configureButton.Visible = String.Equals(PayloadInfo.PackageKind, "public", StringComparison.Ordinal);
+            configureButton.Size = new Size(126, 34);
+            configureButton.Location = new Point(333, 548);
+            configureButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            configureButton.Click += ConfigureButtonClick;
+
             openFolderButton = new Button();
             openFolderButton.Text = "打开安装目录";
             openFolderButton.Enabled = false;
             openFolderButton.Size = new Size(126, 34);
-            openFolderButton.Location = new Point(469, 468);
+            openFolderButton.Location = new Point(469, 548);
             openFolderButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             openFolderButton.Click += OpenFolderButtonClick;
 
             closeButton = new Button();
             closeButton.Text = "关闭";
-            closeButton.Enabled = false;
+            closeButton.Enabled = true;
             closeButton.Size = new Size(126, 34);
-            closeButton.Location = new Point(605, 468);
+            closeButton.Location = new Point(605, 548);
             closeButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             closeButton.Click += delegate { Close(); };
 
             Controls.Add(titleLabel);
             Controls.Add(privacyLabel);
+            Controls.Add(installPathLabel);
+            Controls.Add(installPathTextBox);
+            Controls.Add(browseInstallPathButton);
             Controls.Add(stepLabel);
             Controls.Add(progressBar);
             Controls.Add(logBox);
+            Controls.Add(startInstallButton);
+            Controls.Add(configureButton);
             Controls.Add(openFolderButton);
             Controls.Add(closeButton);
 
-            AcceptButton = closeButton;
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            AcceptButton = startInstallButton;
+            CancelButton = closeButton;
             ExitCode = 1;
+            ResumeLayout(false);
+            PerformLayout();
         }
 
-        protected override void OnShown(EventArgs e)
+        private void BrowseInstallPathButtonClick(object sender, EventArgs e)
         {
-            base.OnShown(e);
+            using (FolderBrowserDialog dialog = new FolderBrowserDialog())
+            {
+                dialog.Description = "选择 CTExcel 短信工具的安装目录";
+                dialog.ShowNewFolderButton = true;
+                string current = installPathTextBox.Text.Trim();
+                if (Directory.Exists(current))
+                    dialog.SelectedPath = current;
+                else
+                {
+                    string parent = Path.GetDirectoryName(current);
+                    if (!String.IsNullOrEmpty(parent) && Directory.Exists(parent))
+                        dialog.SelectedPath = parent;
+                }
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                    installPathTextBox.Text = dialog.SelectedPath;
+            }
+        }
+
+        private void StartInstallButtonClick(object sender, EventArgs e)
+        {
+            string requestedPath;
+            try
+            {
+                requestedPath = InstallerEngine.ValidateInstallPath(installPathTextBox.Text);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "安装目录不可用：\n" + ex.Message,
+                    Text,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            installPathTextBox.Text = requestedPath;
             running = true;
-            Thread worker = new Thread(WorkerMain);
+            titleLabel.Text = "正在安装 CTExcel 短信工具";
+            stepLabel.Text = "正在准备…";
+            progressBar.Style = ProgressBarStyle.Marquee;
+            progressBar.MarqueeAnimationSpeed = 28;
+            startInstallButton.Enabled = false;
+            browseInstallPathButton.Enabled = false;
+            installPathTextBox.Enabled = false;
+            closeButton.Enabled = false;
+            Thread worker = new Thread(new ThreadStart(delegate { WorkerMain(requestedPath); }));
             worker.IsBackground = true;
             worker.SetApartmentState(ApartmentState.STA);
             worker.Start();
@@ -205,13 +301,13 @@ namespace CTExcelSmsDjiInstaller
             base.OnFormClosing(e);
         }
 
-        private void WorkerMain()
+        private void WorkerMain(string requestedInstallPath)
         {
             InstallerEngine engine = null;
             try
             {
                 engine = new InstallerEngine(ReportProgress);
-                InstallResult result = engine.Install();
+                InstallResult result = engine.Install(requestedInstallPath);
                 installedPath = result.InstallPath;
                 BeginInvoke((MethodInvoker)delegate
                 {
@@ -224,12 +320,17 @@ namespace CTExcelSmsDjiInstaller
                         : "安装成功；有 " + result.WarningCount + " 项非阻断提醒，请查看日志。";
                     progressBar.Style = ProgressBarStyle.Continuous;
                     progressBar.Value = 100;
+                    configureButton.Enabled = configureButton.Visible;
                     openFolderButton.Enabled = true;
                     closeButton.Enabled = true;
+                    AcceptButton = closeButton;
+                    string followUp = String.Equals(PayloadInfo.PackageKind, "public", StringComparison.Ordinal)
+                        ? "\n点击“配置并启动”可打开本地设置；DJI 模块和 AT 驱动也可以稍后准备。"
+                        : "\n首次启动前请确认旧电脑上的 Telegram Bot 服务仍保持停止。";
                     MessageBox.Show(
                         "CTExcel 短信工具已经安装到：\n" + result.InstallPath +
                         "\n\n桌面快捷方式已按可用情况创建。程序没有自动启动，也没有创建开机启动。" +
-                        "\n首次启动前请确认旧电脑上的 Telegram Bot 服务仍保持停止。",
+                        followUp,
                         Text,
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
@@ -247,7 +348,11 @@ namespace CTExcelSmsDjiInstaller
                     stepLabel.Text = "失败原因：" + ex.Message;
                     progressBar.Style = ProgressBarStyle.Continuous;
                     progressBar.Value = 0;
+                    installPathTextBox.Enabled = true;
+                    browseInstallPathButton.Enabled = true;
+                    startInstallButton.Enabled = true;
                     closeButton.Enabled = true;
+                    AcceptButton = startInstallButton;
                     MessageBox.Show(
                         "安装失败：\n" + ex.Message + "\n\n详细日志：\n" + logPath,
                         Text,
@@ -288,6 +393,50 @@ namespace CTExcelSmsDjiInstaller
             info.Arguments = InstallerEngine.QuoteArgument(installedPath);
             info.UseShellExecute = true;
             Process.Start(info);
+        }
+
+        private void ConfigureButtonClick(object sender, EventArgs e)
+        {
+            if (String.IsNullOrEmpty(installedPath) || !Directory.Exists(installedPath))
+                return;
+            string startupPath = Path.Combine(installedPath, "启动短信工具.bat");
+            if (!File.Exists(startupPath))
+            {
+                MessageBox.Show("启动入口不存在：\n" + startupPath, Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            object shell = null;
+            try
+            {
+                Type shellType = Type.GetTypeFromProgID("Shell.Application");
+                if (shellType == null)
+                    throw new InvalidOperationException("Windows desktop Shell is unavailable.");
+                shell = Activator.CreateInstance(shellType);
+                shellType.InvokeMember(
+                    "ShellExecute",
+                    BindingFlags.InvokeMethod,
+                    null,
+                    shell,
+                    new object[] { startupPath, String.Empty, installedPath, "open", 1 });
+                configureButton.Enabled = false;
+                configureButton.Text = "已启动";
+                stepLabel.Text = "短信工具已启动；浏览器将打开本地配置页面。";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "无法通过普通用户桌面启动短信工具：\n" + ex.Message +
+                    "\n\n请关闭安装器后，双击桌面的 CTExcel短信工具-DJI 快捷方式。",
+                    Text,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (shell != null && Marshal.IsComObject(shell))
+                    Marshal.FinalReleaseComObject(shell);
+            }
         }
     }
 
@@ -333,6 +482,9 @@ namespace CTExcelSmsDjiInstaller
                 "CTExcel-SMS-DJI-install-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + Process.GetCurrentProcess().Id + ".log");
             logWriter = new StreamWriter(LogPath, false, new UTF8Encoding(false));
             logWriter.AutoFlush = true;
+            Log("Package kind: " + PayloadInfo.PackageKind);
+            Log("Package includes private data: " + PayloadInfo.IncludesPrivateData);
+            Log("Package includes driver: " + PayloadInfo.IncludesDriver);
             Log("Package built UTC: " + PayloadInfo.BuiltUtc);
             Log("Package project files: " + PayloadInfo.ProjectFileCount);
         }
@@ -345,10 +497,13 @@ namespace CTExcelSmsDjiInstaller
             }
         }
 
-        internal InstallResult Install()
+        internal InstallResult Install(string requestedInstallPath)
         {
             if (!IsAdministrator())
                 throw new InvalidOperationException("安装进程没有管理员权限。请重新运行并允许 UAC。 ");
+
+            string installPath = ValidateInstallPath(requestedInstallPath);
+            Log("Selected install path: " + installPath);
 
             workRoot = Path.Combine(Path.GetTempPath(), "CTExcel-SMS-DJI-install-work-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(workRoot);
@@ -361,7 +516,7 @@ namespace CTExcelSmsDjiInstaller
                 Step("2/9  检查 Windows 与安全边界");
                 ValidateOperatingSystem();
                 EnsureServicePortFree();
-                EnsureDjiDeviceConnected();
+                bool deviceConnected = EnsureDjiDeviceConnected(PayloadInfo.IncludesDriver);
                 EnsureNoCellularNetworkAdapter();
 
                 Step("3/9  检查或安装 PowerShell 7");
@@ -373,15 +528,19 @@ namespace CTExcelSmsDjiInstaller
                 Step("5/9  离线安装 Python 依赖");
                 InstallPythonPackages(python, payload.WheelsDirectory);
 
-                Step("6/9  检查或绑定 DJI AT 串口驱动");
-                EnsureDjiAtDriver(pwsh, payload.ProjectDirectory);
+                Step("6/9  检查 DJI AT 串口驱动");
+                if (PayloadInfo.IncludesDriver)
+                    EnsureDjiAtDriver(pwsh, payload.ProjectDirectory);
+                else
+                    CheckExistingDjiAtDriver(pwsh, payload.ProjectDirectory, deviceConnected);
 
-                Step("7/9  安装短信工具及私人迁移数据");
-                string installPath = SelectInstallPath();
+                Step(PayloadInfo.IncludesPrivateData
+                    ? "7/9  安装短信工具及私人迁移数据"
+                    : "7/9  安装短信工具并初始化本地配置");
                 InstallProject(payload.ProjectDirectory, installPath, python);
 
                 Step("8/9  运行新电脑只读验收");
-                RunReadinessCheck(pwsh, installPath);
+                RunReadinessCheck(pwsh, installPath, !PayloadInfo.IncludesPrivateData);
 
                 Step("9/9  创建手动启动入口");
                 TryCreateDesktopShortcut(installPath);
@@ -418,7 +577,13 @@ namespace CTExcelSmsDjiInstaller
                 engine = new InstallerEngine(null);
                 selfTestLog = engine.LogPath;
                 engine.ExtractAndVerifyPayloads(root);
-                File.WriteAllText(resultPath, "SELF_TEST_OK " + PayloadInfo.BuiltUtc, new UTF8Encoding(false));
+                File.WriteAllText(
+                    resultPath,
+                    "SELF_TEST_OK " + PayloadInfo.PackageKind + " " + PayloadInfo.BuiltUtc +
+                    " device=" + (PayloadInfo.IncludesDriver ? "required" : "optional") +
+                    " private=" + (PayloadInfo.IncludesPrivateData ? "true" : "false") +
+                    " driver=" + (PayloadInfo.IncludesDriver ? "true" : "false"),
+                    new UTF8Encoding(false));
                 return 0;
             }
             catch (Exception ex)
@@ -465,19 +630,60 @@ namespace CTExcelSmsDjiInstaller
                 throw new InstallerFailure("内置 PowerShell MSI 的数字签名无效。文件不会运行。 ");
             Log("Official prerequisite hashes and Authenticode signatures are valid.");
 
-            ValidateZip(projectZip, new string[]
+            if (!String.Equals(PayloadInfo.PackageKind, "public", StringComparison.Ordinal) &&
+                !String.Equals(PayloadInfo.PackageKind, "migration", StringComparison.Ordinal))
+                throw new InstallerFailure("安装包类型无效：" + PayloadInfo.PackageKind);
+            if (String.Equals(PayloadInfo.PackageKind, "public", StringComparison.Ordinal) &&
+                (PayloadInfo.IncludesPrivateData || PayloadInfo.IncludesDriver))
+                throw new InstallerFailure("公开安装包不得包含私人数据或未获再分发许可的驱动。 ");
+            if (String.Equals(PayloadInfo.PackageKind, "migration", StringComparison.Ordinal) &&
+                !PayloadInfo.IncludesPrivateData)
+                throw new InstallerFailure("迁移安装包缺少私人数据声明。 ");
+
+            List<string> requiredProjectEntries = new List<string>(new string[]
             {
                 "app.py",
-                "config.json",
-                "archive.jsonl",
-                "state.json",
-                "tg_state.json",
+                "config.example.json",
                 "static/index.html",
-                "tools/Bind-DjiAtPort.ps1",
-                "tools/Test-NewPcReadiness.ps1",
-                "drivers/Quectel-Ports-30.0.65.2/qcser.inf"
-            }, PayloadInfo.ProjectFileCount, false);
-            ValidateZip(wheelsZip, new string[] { "requirements-lock.txt" }, PayloadInfo.WheelCount, true);
+                "tools/DjiDeviceDiscovery.ps1",
+                "tools/Test-NewPcReadiness.ps1"
+            });
+            if (PayloadInfo.IncludesPrivateData)
+            {
+                requiredProjectEntries.Add("config.json");
+                requiredProjectEntries.Add("archive.jsonl");
+                requiredProjectEntries.Add("state.json");
+                requiredProjectEntries.Add("tg_state.json");
+            }
+            if (PayloadInfo.IncludesDriver)
+            {
+                requiredProjectEntries.Add("tools/Bind-DjiAtPort.ps1");
+                requiredProjectEntries.Add("drivers/Quectel-Ports-30.0.65.2/qcser.inf");
+            }
+            string[] forbiddenProjectEntries = String.Equals(PayloadInfo.PackageKind, "public", StringComparison.Ordinal)
+                ? new string[]
+                {
+                    "config.json",
+                    "archive.jsonl",
+                    "state.json",
+                    "tg_state.json",
+                    "app.log",
+                    "tools/Bind-DjiAtPort.ps1",
+                    "drivers/Quectel-Ports-30.0.65.2/qcser.inf"
+                }
+                : new string[0];
+            ValidateZip(
+                projectZip,
+                requiredProjectEntries.ToArray(),
+                forbiddenProjectEntries,
+                PayloadInfo.ProjectFileCount,
+                false);
+            ValidateZip(
+                wheelsZip,
+                new string[] { "requirements-lock.txt" },
+                new string[0],
+                PayloadInfo.WheelCount,
+                true);
 
             string projectDirectory = Path.Combine(root, "project");
             string wheelsDirectory = Path.Combine(root, "wheels");
@@ -516,7 +722,12 @@ namespace CTExcelSmsDjiInstaller
                 return BitConverter.ToString(algorithm.ComputeHash(stream)).Replace("-", String.Empty);
         }
 
-        private static void ValidateZip(string zipPath, string[] requiredEntries, int expectedCount, bool countWheelsOnly)
+        private static void ValidateZip(
+            string zipPath,
+            string[] requiredEntries,
+            string[] forbiddenEntries,
+            int expectedCount,
+            bool countWheelsOnly)
         {
             using (ZipArchive archive = ZipFile.OpenRead(zipPath))
             {
@@ -543,6 +754,11 @@ namespace CTExcelSmsDjiInstaller
                 {
                     if (!names.Contains(required.Replace('\\', '/')))
                         throw new InstallerFailure("压缩载荷缺少文件：" + required);
+                }
+                foreach (string forbidden in forbiddenEntries)
+                {
+                    if (names.Contains(forbidden.Replace('\\', '/')))
+                        throw new InstallerFailure("压缩载荷包含禁止文件：" + forbidden);
                 }
                 if (counted != expectedCount)
                     throw new InstallerFailure("压缩载荷文件数量异常。预期 " + expectedCount + "，实际 " + counted + "。 ");
@@ -607,7 +823,7 @@ namespace CTExcelSmsDjiInstaller
             Report(currentStep, "端口 7597 空闲：通过");
         }
 
-        private void EnsureDjiDeviceConnected()
+        private bool EnsureDjiDeviceConnected(bool required)
         {
             string pnputil = Path.Combine(Environment.SystemDirectory, "pnputil.exe");
             ProcessResult result = RunProcess(pnputil, "/enum-devices /connected /deviceids", false);
@@ -622,10 +838,16 @@ namespace CTExcelSmsDjiInstaller
             foreach (Match match in matches)
                 ids.Add(match.Value.Trim());
             if (ids.Count == 0)
-                throw new InstallerFailure("没有检测到 DJI QDC507 的 MI_02 接口。请插入大疆 4G 模块，等待设备枚举完成后重试。 ");
+            {
+                if (required)
+                    throw new InstallerFailure("没有检测到 DJI QDC507 的 MI_02 接口。请插入大疆 4G 模块，等待设备枚举完成后重试。 ");
+                AddWarning("当前未连接 DJI QDC507；基础软件会继续安装，设备和 AT 驱动可稍后准备。 ");
+                return false;
+            }
             if (ids.Count != 1)
                 throw new InstallerFailure("检测到 " + ids.Count + " 个 DJI MI_02 接口；为避免绑定错设备，安装器已停止。只保留一个模块后重试。 ");
             Report(currentStep, "DJI QDC507 MI_02：已连接");
+            return true;
         }
 
         private void EnsureNoCellularNetworkAdapter()
@@ -834,6 +1056,25 @@ namespace CTExcelSmsDjiInstaller
             throw new InstallerFailure(advice + " 最后探测结果：" + Tail(finalProbe == null ? String.Empty : finalProbe.CombinedOutput, 8));
         }
 
+        private void CheckExistingDjiAtDriver(string pwsh, string projectDirectory, bool deviceConnected)
+        {
+            if (!deviceConnected)
+            {
+                Report(currentStep, "未连接设备：跳过现有 AT 驱动检查");
+                return;
+            }
+            string discovery = Path.Combine(projectDirectory, "tools", "DjiDeviceDiscovery.ps1");
+            ProcessResult probe = ProbeValidatedDriver(pwsh, discovery);
+            if (probe.ExitCode == 0 && probe.StandardOutput.Contains("DRIVER_READY"))
+            {
+                Report(currentStep, "Quectel AT 驱动 30.0.65.2 已就绪");
+                return;
+            }
+            AddWarning(
+                "已检测到 DJI 模块，但没有验证到 Quectel AT 驱动 30.0.65.2。" +
+                "公开包不含未确认再分发许可的驱动，因此没有自动绑定；请按 drivers\\README.md 准备驱动后再启动。 ");
+        }
+
         private ProcessResult ProbeValidatedDriver(string pwsh, string discoveryScript)
         {
             string script =
@@ -852,7 +1093,7 @@ namespace CTExcelSmsDjiInstaller
             return RunProcess(pwsh, "-NoProfile -EncodedCommand " + encoded, true);
         }
 
-        private static string SelectInstallPath()
+        internal static string GetDefaultInstallPath()
         {
             try
             {
@@ -867,8 +1108,102 @@ namespace CTExcelSmsDjiInstaller
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CTExcel-SMS-DJI");
         }
 
+        internal static string ValidateInstallPath(string requestedPath)
+        {
+            if (String.IsNullOrWhiteSpace(requestedPath))
+                throw new InstallerFailure("请选择安装目录。 ");
+
+            string expanded = Environment.ExpandEnvironmentVariables(requestedPath.Trim().Trim('"'));
+            if (!Path.IsPathRooted(expanded))
+                throw new InstallerFailure("安装目录必须是完整的本地绝对路径。 ");
+
+            string fullPath;
+            try
+            {
+                fullPath = Path.GetFullPath(expanded).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            }
+            catch (Exception ex)
+            {
+                throw new InstallerFailure("无法解析安装目录：" + ex.Message, ex);
+            }
+
+            string root = Path.GetPathRoot(fullPath);
+            if (String.IsNullOrEmpty(root) ||
+                String.Equals(
+                    fullPath,
+                    root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    StringComparison.OrdinalIgnoreCase))
+                throw new InstallerFailure("不能直接安装到磁盘根目录。 ");
+            if (fullPath.Length > 180)
+                throw new InstallerFailure("安装目录过长，请选择更短的路径。 ");
+            if (File.Exists(fullPath))
+                throw new InstallerFailure("选定路径是文件，不是目录：" + fullPath + "。 ");
+
+            DriveInfo drive;
+            try
+            {
+                drive = new DriveInfo(root);
+                if (!drive.IsReady)
+                    throw new InstallerFailure("选定磁盘尚未就绪：" + root + "。 ");
+                if (drive.DriveType != DriveType.Fixed)
+                    throw new InstallerFailure("只能安装到本地固定磁盘，不支持网络盘或可移动盘。 ");
+                if (!String.Equals(drive.DriveFormat, "NTFS", StringComparison.OrdinalIgnoreCase))
+                    throw new InstallerFailure("安装目录所在磁盘必须使用 NTFS。 ");
+            }
+            catch (InstallerFailure)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new InstallerFailure("无法检查安装磁盘：" + ex.Message, ex);
+            }
+
+            string existing = Directory.Exists(fullPath) ? fullPath : Path.GetDirectoryName(fullPath);
+            while (!String.IsNullOrEmpty(existing) && Directory.Exists(existing))
+            {
+                if ((File.GetAttributes(existing) & FileAttributes.ReparsePoint) != 0)
+                    throw new InstallerFailure("安装路径不能穿过联接、映射或重解析点：" + existing + "。 ");
+                if (String.Equals(existing.TrimEnd(Path.DirectorySeparatorChar), root.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+                    break;
+                existing = Path.GetDirectoryName(existing);
+            }
+
+            if (Directory.Exists(fullPath))
+            {
+                EnsureTreeContainsNoReparsePoints(fullPath);
+                if (Directory.EnumerateFileSystemEntries(fullPath).Any() &&
+                    !File.Exists(Path.Combine(fullPath, MarkerName)))
+                    throw new InstallerFailure(
+                        "目标目录已存在且不是本安装器创建的目录：" + fullPath +
+                        "。请选择空目录或原安装目录。 ");
+            }
+
+            return fullPath;
+        }
+
+        private static void EnsureTreeContainsNoReparsePoints(string root)
+        {
+            Stack<string> pending = new Stack<string>();
+            pending.Push(root);
+            while (pending.Count > 0)
+            {
+                string directory = pending.Pop();
+                foreach (string entry in Directory.GetFileSystemEntries(directory))
+                {
+                    FileAttributes attributes = File.GetAttributes(entry);
+                    if ((attributes & FileAttributes.ReparsePoint) != 0)
+                        throw new InstallerFailure(
+                            "现有安装目录包含链接、映射或重解析点，已拒绝覆盖：" + entry + "。 ");
+                    if ((attributes & FileAttributes.Directory) != 0)
+                        pending.Push(entry);
+                }
+            }
+        }
+
         private void InstallProject(string source, string destination, string python)
         {
+            destination = ValidateInstallPath(destination);
             bool repair = false;
             if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
             {
@@ -907,6 +1242,9 @@ namespace CTExcelSmsDjiInstaller
                 File.Copy(fullSource, target, true);
             }
 
+            if (!PayloadInfo.IncludesPrivateData)
+                EnsurePublicMutableFiles(destination);
+
             string pythonw = Path.Combine(Path.GetDirectoryName(python), "pythonw.exe");
             if (!File.Exists(pythonw))
                 throw new InstallerFailure("Python 3.14 存在，但同目录缺少 pythonw.exe：" + pythonw);
@@ -922,6 +1260,27 @@ namespace CTExcelSmsDjiInstaller
                 "}\n";
             File.WriteAllText(Path.Combine(destination, MarkerName), marker, new UTF8Encoding(false));
             Report(currentStep, (repair ? "修复完成：" : "首次安装完成：") + destination);
+        }
+
+        private static void EnsurePublicMutableFiles(string destination)
+        {
+            string config = Path.Combine(destination, "config.json");
+            if (!File.Exists(config))
+            {
+                string example = Path.Combine(destination, "config.example.json");
+                if (!File.Exists(example))
+                    throw new InstallerFailure("公开安装载荷缺少 config.example.json。 ");
+                File.Copy(example, config, false);
+            }
+            string archive = Path.Combine(destination, "archive.jsonl");
+            if (!File.Exists(archive))
+                File.WriteAllText(archive, String.Empty, new UTF8Encoding(false));
+            foreach (string stateName in new string[] { "state.json", "tg_state.json" })
+            {
+                string statePath = Path.Combine(destination, stateName);
+                if (!File.Exists(statePath))
+                    File.WriteAllText(statePath, "{}\n", new UTF8Encoding(false));
+            }
         }
 
         private static void GrantCurrentUserModify(string directory)
@@ -940,12 +1299,15 @@ namespace CTExcelSmsDjiInstaller
             Directory.SetAccessControl(directory, security);
         }
 
-        private void RunReadinessCheck(string pwsh, string installPath)
+        private void RunReadinessCheck(string pwsh, string installPath, bool publicInstall)
         {
             string script = Path.Combine(installPath, "tools", "Test-NewPcReadiness.ps1");
+            string arguments = "-NoProfile -File " + QuoteArgument(script);
+            if (publicInstall)
+                arguments += " -SkipDevice -SkipTelegramProxy -AllowMissingBundledDriver";
             ProcessResult result = RunProcess(
                 pwsh,
-                "-NoProfile -File " + QuoteArgument(script),
+                arguments,
                 true);
             if (result.ExitCode != 0)
                 throw ProcessFailure("新电脑只读验收失败", pwsh, result);

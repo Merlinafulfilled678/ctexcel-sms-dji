@@ -130,6 +130,28 @@
       min-width: 0;
     }
 
+    .settings-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 38px;
+      padding: 7px 13px;
+      border-color: var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .settings-button:hover {
+      border-color: var(--faint);
+      background: var(--surface-soft);
+      color: var(--text);
+    }
+
+    .settings-button svg { width: 15px; height: 15px; }
+
     .connection,
     .wwan-status {
       display: flex;
@@ -794,6 +816,66 @@
 
     .dialog-actions .primary-button { min-height: 38px; min-width: 88px; }
 
+    #configDialog { width: min(590px, calc(100% - 32px)); }
+
+    .config-section {
+      margin: 20px 0 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .config-section legend {
+      width: 100%;
+      padding: 0 0 8px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .config-grid .wide { grid-column: 1 / -1; }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: 12px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .checkbox-row input {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 auto;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .field-hint, .config-note, .config-status {
+      display: block;
+      margin: 6px 0 0;
+      color: var(--faint);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+
+    .config-note {
+      padding: 11px 13px;
+      border-radius: 12px;
+      background: var(--surface-inset);
+      color: var(--muted);
+    }
+
+    .config-status.configured { color: var(--success); }
+
     /* ---------- 响应式 ---------- */
 
     @media (max-width: 960px) {
@@ -878,6 +960,10 @@
 
       .primary-button { width: 100%; }
 
+      .config-grid { grid-template-columns: 1fr; }
+
+      .dialog-actions { flex-wrap: wrap; }
+
       .footer-inner {
         flex-direction: column;
         justify-content: center;
@@ -923,6 +1009,10 @@
             </svg>
             <span id="wwanText" class="wwan-text">断网状态未知</span>
           </div>
+          <button id="settingsButton" class="settings-button" type="button" title="本地配置">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.09A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3V9.6h.09A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.13.37.34.71.6 1 .3.29.69.43 1.1.4h.09v4h-.09a1.7 1.7 0 0 0-1.7.6z"/></svg>
+            设置
+          </button>
         </div>
       </div>
 
@@ -1069,6 +1159,72 @@
     </form>
   </dialog>
 
+  <dialog id="configDialog">
+    <form id="configForm">
+      <div class="dialog-body">
+        <h2 class="dialog-title">本地设置</h2>
+        <p class="dialog-message">配置只保存在这台电脑。保存不会发送短信，也不会启用蜂窝数据。</p>
+
+        <fieldset class="config-section">
+          <legend>号码</legend>
+          <div class="config-grid">
+            <div class="wide">
+              <label for="configOwnNumber">本机号码（可选）</label>
+              <input id="configOwnNumber" type="tel" inputmode="tel" autocomplete="tel" placeholder="例如 +447700900123">
+              <span class="field-hint">使用 E.164 格式；不填写也可以正常收发短信。</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="config-section">
+          <legend>Telegram（可选）</legend>
+          <label class="checkbox-row" for="telegramEnabled">
+            <input id="telegramEnabled" type="checkbox">
+            启用 Telegram Bot
+          </label>
+          <div class="config-grid">
+            <div class="wide">
+              <label for="telegramToken">Bot Token</label>
+              <input id="telegramToken" type="password" autocomplete="new-password" placeholder="留空则保留已保存的 Token">
+              <span id="telegramTokenStatus" class="config-status">尚未配置 Token</span>
+            </div>
+            <div class="wide">
+              <label class="checkbox-row" for="clearTelegramToken">
+                <input id="clearTelegramToken" type="checkbox">
+                清除已保存的 Token 和 owner 绑定
+              </label>
+            </div>
+            <div class="wide">
+              <label for="telegramProxy">本机代理（可选）</label>
+              <input id="telegramProxy" type="url" inputmode="url" autocomplete="off" placeholder="例如 http://127.0.0.1:7897">
+              <span class="field-hint">仅接受 localhost、127.0.0.1 或 ::1；留空表示直连。</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="config-section">
+          <legend>提醒</legend>
+          <div class="config-grid">
+            <div>
+              <label for="lowBalanceThreshold">低余额提醒（英镑）</label>
+              <input id="lowBalanceThreshold" type="number" min="0" max="1000" step="0.01" required>
+            </div>
+            <div>
+              <label for="keepaliveWarnDays">90 天不活跃提前提醒</label>
+              <input id="keepaliveWarnDays" type="number" min="1" max="89" step="1" required>
+            </div>
+          </div>
+        </fieldset>
+
+        <p class="config-note">Token 不会显示在页面或接口响应中。更换 Token 会清除旧 Telegram owner，之后由新 Bot 收到的第一条私聊自动绑定。</p>
+      </div>
+      <div class="dialog-actions">
+        <button id="configCancel" class="secondary-button" type="button">取消</button>
+        <button id="configSubmit" class="primary-button" type="submit">保存设置</button>
+      </div>
+    </form>
+  </dialog>
+
   <script>
     "use strict";
 
@@ -1112,7 +1268,20 @@
       balanceAmount: document.getElementById("balanceAmount"),
       balanceCancel: document.getElementById("balanceCancel"),
       balanceQueryButton: document.getElementById("balanceQueryButton"),
-      balanceSubmit: document.getElementById("balanceSubmit")
+      balanceSubmit: document.getElementById("balanceSubmit"),
+      settingsButton: document.getElementById("settingsButton"),
+      configDialog: document.getElementById("configDialog"),
+      configForm: document.getElementById("configForm"),
+      configOwnNumber: document.getElementById("configOwnNumber"),
+      telegramEnabled: document.getElementById("telegramEnabled"),
+      telegramToken: document.getElementById("telegramToken"),
+      telegramTokenStatus: document.getElementById("telegramTokenStatus"),
+      clearTelegramToken: document.getElementById("clearTelegramToken"),
+      telegramProxy: document.getElementById("telegramProxy"),
+      lowBalanceThreshold: document.getElementById("lowBalanceThreshold"),
+      keepaliveWarnDays: document.getElementById("keepaliveWarnDays"),
+      configCancel: document.getElementById("configCancel"),
+      configSubmit: document.getElementById("configSubmit")
     };
 
     const gsmCharacters = new Set(Array.from(
@@ -1124,6 +1293,8 @@
     let confirmAction = null;
     let currentBalance = null;
     let lastMeasuredWwanState = null;
+    let configCsrfToken = "";
+    let telegramTokenConfigured = false;
 
     function showToast(message, isError = false) {
       const toast = document.createElement("div");
@@ -1498,7 +1669,102 @@
       }
     }
 
+    function populateConfigDialog(data) {
+      const config = data.config;
+      const telegram = config.telegram;
+      configCsrfToken = data.csrf_token || configCsrfToken;
+      telegramTokenConfigured = Boolean(telegram.token_configured);
+      elements.configOwnNumber.value = config.carrier.own_number || "";
+      elements.telegramEnabled.checked = Boolean(telegram.enabled);
+      elements.telegramToken.value = "";
+      elements.clearTelegramToken.checked = false;
+      elements.telegramProxy.value = telegram.proxy || "";
+      elements.lowBalanceThreshold.value = Number(config.alerts.low_balance_gbp).toFixed(2);
+      elements.keepaliveWarnDays.value = String(config.alerts.keepalive_warn_days);
+      elements.telegramTokenStatus.textContent = telegramTokenConfigured
+        ? `Token 已配置 · owner ${telegram.chat_id_configured ? "已绑定" : "等待绑定"}`
+        : "尚未配置 Token";
+      elements.telegramTokenStatus.classList.toggle("configured", telegramTokenConfigured);
+    }
+
+    async function openConfigDialog() {
+      try {
+        const data = await api("/api/config");
+        populateConfigDialog(data);
+        elements.configDialog.showModal();
+        elements.configOwnNumber.focus();
+      } catch (error) {
+        showToast(`读取设置失败：${error.message}`, true);
+      }
+    }
+
+    async function offerInitialConfiguration() {
+      try {
+        const data = await api("/api/config");
+        configCsrfToken = data.csrf_token;
+        const untouched = !data.config.carrier.own_number
+          && !data.config.telegram.token_configured;
+        if (untouched && window.localStorage.getItem("ctexcelSetupSeen") !== "1") {
+          populateConfigDialog(data);
+          elements.configDialog.showModal();
+          elements.configOwnNumber.focus();
+        }
+      } catch (error) {
+        showToast(`读取初始设置失败：${error.message}`, true);
+      }
+    }
+
     elements.messageText.addEventListener("input", updateCounter);
+    elements.settingsButton.addEventListener("click", openConfigDialog);
+    elements.configCancel.addEventListener("click", () => {
+      window.localStorage.setItem("ctexcelSetupSeen", "1");
+      elements.configDialog.close();
+    });
+    elements.clearTelegramToken.addEventListener("change", () => {
+      elements.telegramToken.disabled = elements.clearTelegramToken.checked;
+      if (elements.clearTelegramToken.checked) elements.telegramToken.value = "";
+    });
+    elements.configForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const telegram = {
+        enabled: elements.telegramEnabled.checked,
+        proxy: elements.telegramProxy.value.trim()
+      };
+      const enteredToken = elements.telegramToken.value.trim();
+      if (elements.clearTelegramToken.checked) {
+        telegram.token = "";
+      } else if (enteredToken) {
+        telegram.token = enteredToken;
+      }
+      const payload = {
+        carrier: { own_number: elements.configOwnNumber.value.trim() },
+        telegram,
+        alerts: {
+          low_balance_gbp: Number(elements.lowBalanceThreshold.value),
+          keepalive_warn_days: Number(elements.keepaliveWarnDays.value)
+        }
+      };
+      await withBusyButton(elements.configSubmit, "保存中…", async () => {
+        try {
+          const result = await api("/api/config", {
+            method: "POST",
+            headers: { "X-CTExcel-CSRF": configCsrfToken },
+            body: JSON.stringify(payload)
+          });
+          telegramTokenConfigured = Boolean(result.config.telegram.token_configured);
+          elements.telegramToken.value = "";
+          elements.telegramToken.disabled = false;
+          window.localStorage.setItem("ctexcelSetupSeen", "1");
+          elements.configDialog.close();
+          await pollStatus();
+          showToast(result.restart_required
+            ? "设置已保存；请关闭并重新打开短信工具，使 Telegram 与提醒配置生效"
+            : "设置已保存");
+        } catch (error) {
+          showToast(`保存设置失败：${error.message}`, true);
+        }
+      });
+    });
     elements.ownNumber.addEventListener("click", () => {
       copyText(elements.ownNumber.textContent, "本机号码已复制");
     });
@@ -1629,6 +1895,7 @@
     });
 
     updateCounter();
+    offerInitialConfiguration();
     pollStatus();
     pollMessages();
     window.setInterval(pollStatus, 3000);
