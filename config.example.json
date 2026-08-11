@@ -1,0 +1,14 @@
+{
+  "carrier": {
+    "own_number": ""
+  },
+  "telegram": {
+    "token": "",
+    "chat_id": null,
+    "proxy": "http://127.0.0.1:7897"
+  },
+  "alerts": {
+    "low_balance_gbp": 2.0,
+    "keepalive_warn_days": 14
+  }
+}

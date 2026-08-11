@@ -1,0 +1,1638 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>CTExcel SMS 工具</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #faf9f5;
+      --surface: #fffefa;
+      --surface-soft: #f5f2ea;
+      --surface-inset: #f0eee6;
+      --text: #1f1e1d;
+      --muted: #625f59;
+      --faint: #8b877f;
+      --border: #e8e6dc;
+      --border-strong: #d8d4c9;
+      --accent: #d97757;
+      --accent-hover: #c76548;
+      --accent-soft: rgba(217, 119, 87, 0.1);
+      --accent-ring: rgba(217, 119, 87, 0.22);
+      --success: #4e765e;
+      --success-soft: rgba(78, 118, 94, 0.11);
+      --warning: #9c642f;
+      --danger: #b43e43;
+      --danger-soft: rgba(180, 62, 67, 0.09);
+      --danger-solid: #a7373c;
+      --danger-border: #8e2f34;
+      --card-shadow: 0 1px 2px rgba(55, 46, 39, 0.035), 0 10px 28px -20px rgba(55, 46, 39, 0.22);
+      --panel-shadow: 0 1px 2px rgba(55, 46, 39, 0.04), 0 18px 50px -34px rgba(55, 46, 39, 0.28);
+      --pop-shadow: 0 24px 70px rgba(55, 46, 39, 0.2);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, textarea { font: inherit; color: inherit; }
+
+    button {
+      border: 1px solid transparent;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, color 160ms ease;
+    }
+
+    button:focus-visible, input:focus-visible, textarea:focus-visible {
+      outline: 3px solid var(--accent-ring);
+      outline-offset: 2px;
+    }
+
+    button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+    h1, h2 {
+      margin: 0;
+      font-family: Georgia, "Songti SC", "STSong", serif;
+      letter-spacing: 0;
+    }
+
+    .topbar-inner, main, .footer-inner {
+      width: min(1120px, calc(100% - 48px));
+      margin: 0 auto;
+    }
+
+    /* ---------- 顶栏 ---------- */
+
+    .topbar { padding-top: 36px; }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      flex: 0 0 auto;
+      border: 1px solid color-mix(in srgb, var(--accent) 74%, #8e4936);
+      border-radius: 15px;
+      background: var(--accent);
+      box-shadow: 0 8px 22px -16px rgba(116, 61, 43, 0.62);
+      color: #fffaf5;
+    }
+
+    .brand-mark svg { width: 23px; height: 23px; }
+
+    h1 {
+      font-size: 25px;
+      font-weight: 600;
+      letter-spacing: 0;
+      line-height: 1.15;
+    }
+
+    .brand-sub {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .connection-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      max-width: 65%;
+      min-width: 0;
+    }
+
+    .connection,
+    .wwan-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      min-width: 0;
+      padding: 8px 15px 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--surface) 88%, var(--surface-soft));
+      box-shadow: none;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 550;
+    }
+
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--faint);
+    }
+
+    .connection.connected {
+      border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+      background: color-mix(in srgb, var(--success-soft) 60%, var(--surface));
+      color: var(--success);
+    }
+
+    .connection.connected .connection-dot {
+      background: var(--success);
+      animation: pulse 2.2s ease-out infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent); }
+      70% { box-shadow: 0 0 0 7px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+
+    .connection-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .wwan-status {
+      background: var(--surface-inset);
+      box-shadow: none;
+      color: var(--faint);
+    }
+
+    .wwan-status.disabled,
+    .wwan-status.absent {
+      border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+      background: color-mix(in srgb, var(--success-soft) 60%, var(--surface));
+      color: var(--success);
+    }
+
+    .wwan-status.absent .wwan-icon { display: block; }
+
+    .wwan-status.enabled {
+      border-color: var(--danger-border);
+      background: var(--danger-solid);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 45%, transparent);
+      color: #fffaf5;
+      animation: wwan-danger-pulse 1.5s ease-in-out infinite;
+    }
+
+    .wwan-icon {
+      width: 15px;
+      height: 15px;
+      flex: 0 0 auto;
+    }
+
+    .wwan-status:not(.disabled) .wwan-icon { display: none; }
+
+    .wwan-text {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    @keyframes wwan-danger-pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 25%, transparent);
+        filter: brightness(1);
+      }
+      50% {
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--danger) 18%, transparent);
+        filter: brightness(1.12);
+      }
+    }
+
+    /* ---------- 状态面板 ---------- */
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: var(--panel-shadow);
+    }
+
+    .status-item {
+      position: relative;
+      min-width: 0;
+      padding: 19px 20px 18px;
+    }
+
+    .status-item + .status-item::before {
+      content: "";
+      position: absolute;
+      top: 19px;
+      bottom: 19px;
+      left: 0;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .status-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 7px;
+      color: var(--faint);
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .status-label svg {
+      width: 13px;
+      height: 13px;
+      flex: 0 0 auto;
+      opacity: 0.9;
+    }
+
+    .status-value {
+      display: flex;
+      align-items: center;
+      min-height: 24px;
+      overflow-wrap: anywhere;
+      font-size: 14.5px;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .status-detail {
+      display: block;
+      min-height: 17px;
+      margin-top: 2px;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .balance-card {
+      width: 100%;
+      padding: 19px 20px 18px;
+      border: 0;
+      border-radius: 0 22px 22px 0;
+      background: transparent;
+      text-align: left;
+    }
+
+    .balance-card:hover { background: var(--accent-soft); }
+
+    .balance-card.low-balance {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .balance-card.low-balance .status-label,
+    .balance-card.low-balance .status-detail { color: currentColor; }
+
+    .signal-bars {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 2.5px;
+      height: 17px;
+      margin-right: 8px;
+    }
+
+    .signal-bars span {
+      width: 4.5px;
+      background: var(--border-strong);
+      border-radius: 2px;
+      transition: background-color 300ms ease;
+    }
+
+    .signal-bars span:nth-child(1) { height: 5px; }
+    .signal-bars span:nth-child(2) { height: 9px; }
+    .signal-bars span:nth-child(3) { height: 13px; }
+    .signal-bars span:nth-child(4) { height: 17px; }
+    .signal-bars span.active { background: var(--success); }
+
+    .copy-link {
+      max-width: 100%;
+      min-height: 24px;
+      padding: 0;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      overflow-wrap: anywhere;
+      text-align: left;
+      text-decoration: underline dotted;
+      text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+      text-underline-offset: 4px;
+    }
+
+    .copy-link:hover { color: var(--accent); }
+
+    .warning { color: var(--warning); }
+    .danger { color: var(--danger); }
+
+    /* ---------- 主体 ---------- */
+
+    main { padding: 38px 0 48px; }
+
+    .section { margin-bottom: 42px; }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 15px;
+    }
+
+    h2 {
+      font-size: 19px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .message-count {
+      color: var(--faint);
+      font-size: 13px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .secondary-button, .ghost-button {
+      min-height: 36px;
+      padding: 6px 14px;
+      border-color: var(--border-strong);
+      border-radius: 12px;
+      background: var(--surface);
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .secondary-button:hover, .ghost-button:hover {
+      border-color: var(--faint);
+      background: var(--surface-soft);
+    }
+
+    .ghost-button {
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .ghost-button:hover { color: var(--text); }
+
+    .danger-button { color: var(--danger); }
+
+    .danger-button:hover {
+      border-color: color-mix(in srgb, var(--danger) 40%, var(--border-strong));
+      background: var(--danger-soft);
+    }
+
+    /* ---------- 消息双栏 ---------- */
+
+    .message-columns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+      gap: 26px;
+    }
+
+    .message-column { min-width: 0; }
+
+    .message-column-heading { min-height: 40px; }
+
+    .column-title {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .column-dot {
+      align-self: center;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .column-dot.in { background: var(--accent); }
+    .column-dot.out { background: var(--faint); }
+
+    .message-list {
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      height: min(56vh, 620px);
+      min-height: 340px;
+      min-width: 0;
+      padding: 2px 8px 14px 2px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    .message-list::-webkit-scrollbar { width: 8px; }
+    .message-list::-webkit-scrollbar-track { background: transparent; }
+    .message-list::-webkit-scrollbar-thumb {
+      border-radius: 99px;
+      background: var(--border-strong);
+    }
+    .message-list::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+
+    .message-card {
+      position: relative;
+      padding: 17px 19px 18px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: var(--card-shadow);
+      transition: border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    #inboxList .message-card {
+      border-left: 3px solid color-mix(in srgb, var(--accent) 72%, var(--border));
+    }
+
+    #sentList .message-card {
+      background: var(--surface-soft);
+      border-left: 3px solid var(--border-strong);
+    }
+
+    .message-card:hover { border-color: var(--border-strong); }
+
+    #inboxList .message-card:hover { border-left-color: var(--accent); }
+
+    .message-card.new-message {
+      border-color: var(--accent);
+      border-left-color: var(--accent);
+      animation: message-arrival 1.6s ease-out;
+    }
+
+    @keyframes message-arrival {
+      0% {
+        background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+        box-shadow: 0 0 0 4px var(--accent-ring);
+        transform: translateY(-3px);
+      }
+      100% {
+        background: var(--surface);
+        box-shadow: var(--card-shadow);
+        transform: translateY(0);
+      }
+    }
+
+    .message-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 6px;
+    }
+
+    .sender {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-size: 13.5px;
+      font-weight: 650;
+    }
+
+    #sentList .sender { color: var(--muted); font-weight: 600; }
+
+    .message-time {
+      flex: 0 0 auto;
+      color: var(--faint);
+      font-size: 11.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .message-body {
+      margin: 0;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .message-origin {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 1px 7px;
+      border-radius: 7px;
+      background: var(--surface-inset);
+      color: var(--faint);
+      font-size: 10.5px;
+      font-weight: 550;
+      vertical-align: 1.5px;
+      white-space: nowrap;
+    }
+
+    .message-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 12px;
+      padding: 10px 14px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 35%, var(--border-strong));
+      border-radius: 14px;
+      background: var(--accent-soft);
+    }
+
+    .code-label {
+      display: block;
+      margin-bottom: 1px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .verification-code {
+      display: block;
+      color: var(--accent);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 0;
+      line-height: 1.2;
+    }
+
+    .message-footer .secondary-button {
+      border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+      color: var(--accent);
+      background: var(--surface);
+    }
+
+    .message-footer .secondary-button:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fffaf5;
+    }
+
+    .empty-state {
+      display: grid;
+      place-items: center;
+      gap: 4px;
+      padding: 52px 20px;
+      border: 1.5px dashed var(--border-strong);
+      border-radius: 18px;
+      color: var(--faint);
+      font-size: 13.5px;
+      text-align: center;
+    }
+
+    .empty-state::before {
+      content: "";
+      width: 34px;
+      height: 34px;
+      opacity: 0.55;
+      background: currentColor;
+      -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/></svg>') center / contain no-repeat;
+      mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z"/></svg>') center / contain no-repeat;
+    }
+
+    /* ---------- 发送区 ---------- */
+
+    .compose {
+      padding: 26px 28px 24px;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: var(--panel-shadow);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.8fr) minmax(300px, 2fr);
+      gap: 22px;
+      margin-top: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--border-strong);
+      border-radius: 13px;
+      background: var(--surface-inset);
+      color: var(--text);
+      transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    input { height: 44px; padding: 0 13px; }
+
+    textarea {
+      min-height: 118px;
+      padding: 11px 13px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    input:hover, textarea:hover { border-color: var(--faint); }
+
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+      background: var(--surface);
+      box-shadow: 0 0 0 3px var(--accent-ring);
+      outline: none;
+    }
+
+    .compose-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 16px;
+      margin-top: 14px;
+    }
+
+    .counter {
+      color: var(--faint);
+      font-size: 12.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .primary-button {
+      min-width: 108px;
+      min-height: 42px;
+      padding: 8px 20px;
+      border-color: var(--accent);
+      border-radius: 13px;
+      background: var(--accent);
+      color: #fffaf5;
+      font-weight: 650;
+      letter-spacing: 0;
+      box-shadow: 0 8px 20px -14px rgba(116, 61, 43, 0.68);
+    }
+
+    .primary-button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: var(--accent-hover);
+      background: var(--accent-hover);
+      box-shadow: 0 11px 24px -14px rgba(116, 61, 43, 0.72);
+    }
+
+    .primary-button:active:not(:disabled) { transform: translateY(0); }
+
+    /* ---------- 页脚 ---------- */
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 4px 0 34px;
+    }
+
+    .rate-note {
+      margin: 0;
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    /* ---------- Toast ---------- */
+
+    .toast-region {
+      position: fixed;
+      z-index: 20;
+      right: 20px;
+      bottom: 20px;
+      display: grid;
+      width: min(380px, calc(100% - 40px));
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--success);
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: var(--pop-shadow);
+      font-size: 13.5px;
+      font-weight: 600;
+      animation: toast-in 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    }
+
+    .toast.error {
+      border-color: color-mix(in srgb, var(--danger) 42%, var(--border));
+      border-left-color: var(--danger);
+      background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+    }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ---------- 对话框 ---------- */
+
+    dialog {
+      width: min(430px, calc(100% - 32px));
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--pop-shadow);
+    }
+
+    dialog::backdrop {
+      background: rgba(40, 35, 31, 0.42);
+      backdrop-filter: blur(3px);
+    }
+
+    .dialog-body { padding: 24px 24px 18px; }
+
+    .dialog-title { margin: 0 0 8px; font-size: 19px; }
+
+    .dialog-message {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    .dialog-field { margin-top: 16px; }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-soft);
+      border-radius: 0 0 20px 20px;
+    }
+
+    .dialog-actions .primary-button { min-height: 38px; min-width: 88px; }
+
+    /* ---------- 响应式 ---------- */
+
+    @media (max-width: 960px) {
+      .status-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+      .status-item + .status-item::before { display: none; }
+
+      .status-item, .balance-card {
+        border-radius: 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .status-item:nth-child(-n + 3) { border-top: 0; }
+
+      .status-item:not(:nth-child(3n + 1))::before {
+        content: "";
+        display: block;
+        position: absolute;
+        top: 19px;
+        bottom: 19px;
+        left: 0;
+        width: 1px;
+        background: var(--border);
+      }
+    }
+
+    @media (max-width: 800px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 699px) {
+      .message-columns {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 28px;
+      }
+
+      .message-list {
+        height: min(48vh, 460px);
+        min-height: 280px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .status-item:nth-child(-n + 3) { border-top: 1px solid var(--border); }
+      .status-item:nth-child(-n + 2) { border-top: 0; }
+      .status-item:not(:nth-child(3n + 1))::before { display: none; }
+      .status-item:nth-child(2n)::before {
+        content: "";
+        display: block;
+        position: absolute;
+        top: 19px;
+        bottom: 19px;
+        left: 0;
+        width: 1px;
+        background: var(--border);
+      }
+    }
+
+    @media (max-width: 560px) {
+      .topbar-inner, main, .footer-inner { width: min(100% - 24px, 1120px); }
+
+      .brand-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .connection-group {
+        justify-content: flex-start;
+        width: 100%;
+        max-width: 100%;
+      }
+
+      main { padding-top: 24px; }
+
+      .message-meta { flex-direction: column; align-items: flex-start; gap: 2px; }
+
+      .compose { padding: 18px; }
+
+      .compose-actions { align-items: stretch; flex-direction: column; }
+
+      .primary-button { width: 100%; }
+
+      .footer-inner {
+        flex-direction: column;
+        justify-content: center;
+        gap: 10px;
+        padding-bottom: 26px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-row">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+            </svg>
+          </div>
+          <div>
+            <h1 id="brandTitle">CTExcel SMS</h1>
+            <p class="brand-sub">DJI QDC507 · IMS 短信工作台 · 零流量</p>
+          </div>
+        </div>
+        <div class="connection-group">
+          <div id="connection" class="connection" role="status">
+            <span class="connection-dot" aria-hidden="true"></span>
+            <span id="connectionText" class="connection-text">等待设备接入…</span>
+          </div>
+          <div id="wwanStatus" class="wwan-status unknown" role="status" title="尚无实测结果">
+            <svg class="wwan-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+            <span id="wwanText" class="wwan-text">断网状态未知</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-grid" aria-label="设备状态">
+        <div class="status-item">
+          <span class="status-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg>
+            信号
+          </span>
+          <span class="status-value">
+            <span id="signalBars" class="signal-bars" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+            </span>
+            <span id="signalText">未知</span>
+          </span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            网络
+          </span>
+          <span id="operator" class="status-value">未注册</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 4v3a3 3 0 0 0 6 0V4"/></svg>
+            <span id="storageLabel">模块收件槽</span>
+          </span>
+          <span id="storage" class="status-value">—/—</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            本机号码
+          </span>
+          <button id="ownNumber" class="status-value copy-link" type="button" title="复制本机号码">—</button>
+        </div>
+        <div class="status-item">
+          <span class="status-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            短信活跃参考
+          </span>
+          <span id="keepalive" class="status-value">未知</span>
+        </div>
+        <button id="balanceCard" class="status-item balance-card" type="button" title="查询或校准余额">
+          <span class="status-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
+            <span id="accountLabel">CTExcel 账户</span>
+          </span>
+          <span id="balanceValue" class="status-value">余额未知</span>
+          <span id="balanceDetail" class="status-detail">点击校准</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="section" aria-label="短信记录">
+      <div class="message-columns">
+        <section class="message-column" aria-labelledby="inboxTitle">
+          <div class="section-heading message-column-heading">
+            <span class="column-title">
+              <span class="column-dot in" aria-hidden="true"></span>
+              <h2 id="inboxTitle">收件箱</h2>
+              <span id="inboxCount" class="message-count">· 0</span>
+            </span>
+            <button id="clearButton" class="secondary-button danger-button" type="button">清空模块收件槽</button>
+          </div>
+          <div id="inboxList" class="message-list" aria-live="polite">
+            <div class="empty-state">正在读取短信…</div>
+          </div>
+        </section>
+
+        <section class="message-column" aria-labelledby="sentTitle">
+          <div class="section-heading message-column-heading">
+            <span class="column-title">
+              <span class="column-dot out" aria-hidden="true"></span>
+              <h2 id="sentTitle">已发送</h2>
+              <span id="sentCount" class="message-count">· 0</span>
+            </span>
+          </div>
+          <div id="sentList" class="message-list" aria-live="polite">
+            <div class="empty-state">正在读取短信…</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="section compose" aria-labelledby="composeTitle">
+      <h2 id="composeTitle">发送短信</h2>
+      <form id="sendForm">
+        <div class="form-grid">
+          <div>
+            <label for="recipient">收件人</label>
+            <input id="recipient" name="recipient" type="tel" inputmode="tel" autocomplete="tel" placeholder="+8613xxxxxxxxx" required>
+          </div>
+          <div>
+            <label for="messageText">内容</label>
+            <textarea id="messageText" name="messageText" required></textarea>
+          </div>
+        </div>
+        <div class="compose-actions">
+          <span id="messageCounter" class="counter">0 字 · 预计 0 条</span>
+          <button id="sendButton" class="primary-button" type="submit">发送</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <button id="carrierTestButton" class="ghost-button" type="button">CTExcel BAL 收发自检</button>
+      <p id="rateNote" class="rate-note">CTExcel：中国大陆接收短信免费 · 发送参考 10p/条 · 888 服务短信以实际账单为准 · 流量已禁用</p>
+    </div>
+  </footer>
+
+  <div id="toastRegion" class="toast-region" aria-live="assertive"></div>
+
+  <dialog id="confirmDialog">
+    <div class="dialog-body">
+      <h2 id="dialogTitle" class="dialog-title">确认操作</h2>
+      <p id="dialogMessage" class="dialog-message"></p>
+    </div>
+    <div class="dialog-actions">
+      <button id="dialogCancel" class="secondary-button" type="button">取消</button>
+      <button id="dialogConfirm" class="primary-button" type="button">确认</button>
+    </div>
+  </dialog>
+
+  <dialog id="balanceDialog">
+    <form id="balanceForm">
+      <div class="dialog-body">
+        <h2 class="dialog-title">校准余额</h2>
+        <div class="dialog-field">
+          <label for="balanceAmount">余额（英镑）</label>
+          <input id="balanceAmount" name="balanceAmount" type="number" inputmode="decimal" min="0" max="1000" step="0.01" required>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button id="balanceCancel" class="secondary-button" type="button">取消</button>
+        <button id="balanceQueryButton" class="secondary-button" type="button">向 888 查询</button>
+        <button id="balanceSubmit" class="primary-button" type="submit">确定</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    "use strict";
+
+    const elements = {
+      connection: document.getElementById("connection"),
+      connectionText: document.getElementById("connectionText"),
+      wwanStatus: document.getElementById("wwanStatus"),
+      wwanText: document.getElementById("wwanText"),
+      signalBars: Array.from(document.querySelectorAll("#signalBars span")),
+      signalText: document.getElementById("signalText"),
+      operator: document.getElementById("operator"),
+      storageLabel: document.getElementById("storageLabel"),
+      storage: document.getElementById("storage"),
+      ownNumber: document.getElementById("ownNumber"),
+      keepalive: document.getElementById("keepalive"),
+      brandTitle: document.getElementById("brandTitle"),
+      accountLabel: document.getElementById("accountLabel"),
+      rateNote: document.getElementById("rateNote"),
+      balanceCard: document.getElementById("balanceCard"),
+      balanceValue: document.getElementById("balanceValue"),
+      balanceDetail: document.getElementById("balanceDetail"),
+      inboxCount: document.getElementById("inboxCount"),
+      sentCount: document.getElementById("sentCount"),
+      inboxList: document.getElementById("inboxList"),
+      sentList: document.getElementById("sentList"),
+      clearButton: document.getElementById("clearButton"),
+      sendForm: document.getElementById("sendForm"),
+      recipient: document.getElementById("recipient"),
+      messageText: document.getElementById("messageText"),
+      messageCounter: document.getElementById("messageCounter"),
+      sendButton: document.getElementById("sendButton"),
+      carrierTestButton: document.getElementById("carrierTestButton"),
+      toastRegion: document.getElementById("toastRegion"),
+      confirmDialog: document.getElementById("confirmDialog"),
+      dialogTitle: document.getElementById("dialogTitle"),
+      dialogMessage: document.getElementById("dialogMessage"),
+      dialogCancel: document.getElementById("dialogCancel"),
+      dialogConfirm: document.getElementById("dialogConfirm"),
+      balanceDialog: document.getElementById("balanceDialog"),
+      balanceForm: document.getElementById("balanceForm"),
+      balanceAmount: document.getElementById("balanceAmount"),
+      balanceCancel: document.getElementById("balanceCancel"),
+      balanceQueryButton: document.getElementById("balanceQueryButton"),
+      balanceSubmit: document.getElementById("balanceSubmit")
+    };
+
+    const gsmCharacters = new Set(Array.from(
+      "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà^{}\\[~]|€\f"
+    ));
+    const knownInboxMessageIds = new Set();
+    const highlightUntil = new Map();
+    let initialMessagesLoaded = false;
+    let confirmAction = null;
+    let currentBalance = null;
+    let lastMeasuredWwanState = null;
+
+    function showToast(message, isError = false) {
+      const toast = document.createElement("div");
+      toast.className = `toast${isError ? " error" : ""}`;
+      toast.textContent = message;
+      elements.toastRegion.append(toast);
+      window.setTimeout(() => toast.remove(), 4200);
+    }
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(options.headers || {})
+        }
+      });
+      let data;
+      try {
+        data = await response.json();
+      } catch (error) {
+        throw new Error(`服务器返回了无效响应（${response.status}）`);
+      }
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || `请求失败（${response.status}）`);
+      }
+      return data;
+    }
+
+    function signalLevel(signal) {
+      if (!Number.isInteger(signal)) return 0;
+      if (signal <= 7) return 1;
+      if (signal <= 14) return 2;
+      if (signal <= 21) return 3;
+      return 4;
+    }
+
+    function operatorName(value) {
+      const operator = value || "";
+      if (/CHINA\s*MOBILE|CMCC|4600[027]|中国移动/i.test(operator)) {
+        return "中国移动";
+      }
+      if (/CHN-CT|CHINA\s*TELECOM|CTCC|4600[35]|中国电信/i.test(operator)) {
+        return "中国电信";
+      }
+      if (/CHN-UNICOM|CHINA\s*UNICOM|CUCC|46001|中国联通/i.test(operator)) {
+        return "中国联通";
+      }
+      return operator || "运营商未知";
+    }
+
+    function formatBalanceTime(value) {
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return "时间未知";
+      const parts = new Intl.DateTimeFormat("zh-CN", {
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).formatToParts(parsed);
+      const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      return `${values.month}-${values.day} ${values.hour}:${values.minute}`;
+    }
+
+    function renderWwanStatus(wwan) {
+      const labels = {
+        disabled: "断网已生效",
+        enabled: "WWAN 未禁用 · 有流量风险！",
+        absent: "无网卡接口 · 安全",
+        unknown: "断网状态未知"
+      };
+      const measuredState = wwan && Object.prototype.hasOwnProperty.call(labels, wwan.state)
+        ? wwan.state
+        : null;
+      const state = measuredState || "unknown";
+      elements.wwanStatus.classList.remove("disabled", "enabled", "absent", "unknown");
+      elements.wwanStatus.classList.add(state);
+      elements.wwanText.textContent = labels[state];
+
+      const checkedAtValue = wwan && typeof wwan.checked_at === "string"
+        ? wwan.checked_at
+        : "";
+      const checkedAt = new Date(checkedAtValue);
+      if (measuredState && checkedAtValue && !Number.isNaN(checkedAt.getTime())) {
+        const time = new Intl.DateTimeFormat("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false
+        }).format(checkedAt);
+        elements.wwanStatus.title = `实测于 ${time}`;
+      } else {
+        elements.wwanStatus.title = "尚无实测结果";
+      }
+
+      if (measuredState === "enabled" && lastMeasuredWwanState !== "enabled") {
+        showToast("检测到蜂窝 WWAN 网卡已启用，存在流量风险，请到设备管理器禁用！", true);
+      }
+      if (measuredState) lastMeasuredWwanState = measuredState;
+    }
+
+    function renderStatus(status) {
+      const carrier = status.carrier && typeof status.carrier === "object"
+        ? status.carrier
+        : null;
+      if (carrier && carrier.name) {
+        elements.brandTitle.textContent = `${carrier.name} SMS`;
+        elements.accountLabel.textContent = `${carrier.name} 账户`;
+      }
+      if (carrier && carrier.rate_note) {
+        elements.rateNote.textContent = carrier.rate_note;
+      }
+      elements.connection.classList.toggle("connected", Boolean(status.connected));
+      if (status.connected) {
+        const modemName = status.modem && status.modem.name ? status.modem.name : "短信模块";
+        const portSuffix = status.port ? ` · ${status.port}` : "";
+        elements.connectionText.textContent = `已连接 ${modemName}${portSuffix}`;
+        elements.connectionText.title = "";
+      } else {
+        const detail = status.error ? `：${status.error}` : "";
+        elements.connectionText.textContent = `等待设备接入…${detail}`;
+        elements.connectionText.title = status.error || "";
+      }
+      renderWwanStatus(status.wwan);
+
+      const level = signalLevel(status.signal);
+      elements.signalBars.forEach((bar, index) => {
+        bar.classList.toggle("active", index < level);
+      });
+      elements.signalText.textContent = Number.isInteger(status.signal)
+        ? `${status.signal}/31`
+        : "未知";
+
+      if (status.registered) {
+        const ims = status.sms_ready === true
+          ? " · IMS 短信在线"
+          : status.sms_ready === false
+            ? " · IMS 未注册"
+            : "";
+        elements.operator.textContent = `${operatorName(status.operator)}${status.roaming ? " · 漫游" : ""}${ims}`;
+      } else {
+        elements.operator.textContent = status.connected ? "未注册" : "等待连接";
+      }
+
+      const used = Number.isInteger(status.storage_used) ? status.storage_used : "—";
+      const total = Number.isInteger(status.storage_total) ? status.storage_total : "—";
+      elements.storage.textContent = `${used}/${total}`;
+      elements.storageLabel.textContent = status.storage_name
+        ? `模块收件槽 (${status.storage_name})`
+        : "模块收件槽";
+      elements.storage.classList.toggle(
+        "warning",
+        Number.isInteger(used) && Number.isInteger(total) && used >= Math.max(1, total - 2)
+      );
+
+      elements.ownNumber.textContent = status.own_number || "未配置";
+      const days = status.keepalive_days_left;
+      elements.keepalive.classList.remove("danger");
+      if (!Number.isInteger(days)) {
+        elements.keepalive.textContent = "未记录本工具发送";
+      } else if (days < 0) {
+        elements.keepalive.textContent = `已逾期 ${Math.abs(days)} 天`;
+        elements.keepalive.classList.add("danger");
+      } else {
+        elements.keepalive.textContent = `${days} 天`;
+        elements.keepalive.classList.toggle("danger", days < 30);
+      }
+
+      const balance = status.balance;
+      const amount = balance && typeof balance.amount === "number" && Number.isFinite(balance.amount)
+        ? balance.amount
+        : null;
+      elements.balanceCard.classList.toggle("low-balance", amount !== null && amount < 1);
+      if (amount === null) {
+        currentBalance = null;
+        elements.balanceValue.textContent = "余额未知";
+        elements.balanceDetail.textContent = "点击校准";
+      } else {
+        currentBalance = amount;
+        const source = balance.source === "sms" ? "短信解析" : "手动校准";
+        elements.balanceValue.textContent = `余额 £${amount.toFixed(2)}`;
+        elements.balanceDetail.textContent = `${source} · ${formatBalanceTime(balance.time)}`;
+      }
+    }
+
+    async function pollStatus() {
+      try {
+        renderStatus(await api("/api/status"));
+      } catch (error) {
+        renderStatus({ connected: false, error: "本地服务无响应", storage_total: null });
+      }
+    }
+
+    function formatTime(epoch) {
+      if (typeof epoch !== "number" || !Number.isFinite(epoch)) return "时间未知";
+      const parsed = new Date(epoch * 1000);
+      if (Number.isNaN(parsed.getTime())) return "时间未知";
+      const pad = (value) => String(value).padStart(2, "0");
+      const clock = `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
+      return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())} ${clock}`;
+    }
+
+    function createMessageCard(message, isInbox) {
+      const article = document.createElement("article");
+      article.className = "message-card";
+      article.dataset.messageId = message.id;
+      if (isInbox && (highlightUntil.get(message.id) || 0) > Date.now()) {
+        article.classList.add("new-message");
+      }
+
+      const meta = document.createElement("div");
+      meta.className = "message-meta";
+      const sender = document.createElement("div");
+      sender.className = "sender";
+      sender.textContent = message.sender || "未知发件人";
+      if (isInbox) {
+        const origin = document.createElement("span");
+        origin.className = "message-origin";
+        origin.textContent = message.on_sim ? "模块存储" : "本地存档";
+        sender.append(origin);
+      }
+      const timestamp = document.createElement("time");
+      timestamp.className = "message-time";
+      timestamp.dateTime = typeof message.epoch === "number" && Number.isFinite(message.epoch)
+        ? new Date(message.epoch * 1000).toISOString()
+        : "";
+      timestamp.textContent = formatTime(message.epoch);
+      meta.append(sender, timestamp);
+
+      const body = document.createElement("p");
+      body.className = "message-body";
+      const bodyText = typeof message.body === "string" ? message.body : "";
+      body.textContent = bodyText && !bodyText.trim() ? "[一个空格]" : bodyText;
+      article.append(meta, body);
+
+      if (isInbox && message.code) {
+        const footer = document.createElement("div");
+        footer.className = "message-footer";
+        const codeBlock = document.createElement("div");
+        const label = document.createElement("span");
+        label.className = "code-label";
+        label.textContent = "验证码";
+        const code = document.createElement("strong");
+        code.className = "verification-code";
+        code.textContent = message.code;
+        codeBlock.append(label, code);
+        const copyButton = document.createElement("button");
+        copyButton.className = "secondary-button";
+        copyButton.type = "button";
+        copyButton.textContent = "复制";
+        copyButton.addEventListener("click", () => copyText(message.code, "验证码已复制"));
+        footer.append(codeBlock, copyButton);
+        article.append(footer);
+      }
+      return article;
+    }
+
+    function sortByEpoch(messages) {
+      return messages.sort((first, second) => {
+        const firstEpoch = typeof first.epoch === "number" && Number.isFinite(first.epoch)
+          ? first.epoch
+          : null;
+        const secondEpoch = typeof second.epoch === "number" && Number.isFinite(second.epoch)
+          ? second.epoch
+          : null;
+        if (firstEpoch === null) return secondEpoch === null ? 0 : 1;
+        if (secondEpoch === null) return -1;
+        return secondEpoch - firstEpoch;
+      });
+    }
+
+    function renderMessageList(container, messages, emptyText, isInbox) {
+      container.replaceChildren();
+      if (!messages.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = emptyText;
+        container.append(empty);
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      for (const message of messages) {
+        fragment.append(createMessageCard(message, isInbox));
+      }
+      container.append(fragment);
+    }
+
+    function renderMessages(messages) {
+      const inboxMessages = sortByEpoch(
+        messages.filter((message) => message.direction === "in")
+      );
+      const sentMessages = sortByEpoch(
+        messages.filter((message) => message.direction === "out")
+      );
+      const now = Date.now();
+      if (initialMessagesLoaded) {
+        for (const message of inboxMessages) {
+          if (!knownInboxMessageIds.has(message.id)) {
+            highlightUntil.set(message.id, now + 5000);
+          }
+        }
+      }
+      knownInboxMessageIds.clear();
+      for (const message of inboxMessages) knownInboxMessageIds.add(message.id);
+      for (const [id, deadline] of highlightUntil) {
+        if (deadline <= now) highlightUntil.delete(id);
+      }
+      initialMessagesLoaded = true;
+
+      elements.inboxCount.textContent = `· ${inboxMessages.length}`;
+      elements.sentCount.textContent = `· ${sentMessages.length}`;
+      renderMessageList(elements.inboxList, inboxMessages, "暂无收件", true);
+      renderMessageList(elements.sentList, sentMessages, "暂无已发送短信", false);
+    }
+
+    async function pollMessages() {
+      try {
+        renderMessages(await api("/api/messages"));
+      } catch (error) {
+        if (!initialMessagesLoaded) {
+          renderMessageList(elements.inboxList, [], "暂时无法读取收件箱", true);
+          renderMessageList(elements.sentList, [], "暂时无法读取已发送短信", false);
+        }
+      }
+    }
+
+    function updateCounter() {
+      const characters = Array.from(elements.messageText.value);
+      const gsm = characters.every((character) => gsmCharacters.has(character));
+      const limit = gsm ? 160 : 70;
+      const parts = characters.length ? Math.ceil(characters.length / limit) : 0;
+      elements.messageCounter.textContent = `${characters.length} 字 · 预计 ${parts} 条`;
+    }
+
+    async function copyText(text, successMessage) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const helper = document.createElement("textarea");
+          helper.value = text;
+          helper.style.position = "fixed";
+          helper.style.opacity = "0";
+          document.body.append(helper);
+          helper.select();
+          if (!document.execCommand("copy")) throw new Error("复制命令失败");
+          helper.remove();
+        }
+        showToast(successMessage);
+      } catch (error) {
+        showToast("复制失败，请手动复制", true);
+      }
+    }
+
+    function openConfirmation(title, message, action) {
+      elements.dialogTitle.textContent = title;
+      elements.dialogMessage.textContent = message;
+      confirmAction = action;
+      elements.confirmDialog.showModal();
+    }
+
+    async function withBusyButton(button, busyText, action) {
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = busyText;
+      try {
+        await action();
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+
+    elements.messageText.addEventListener("input", updateCounter);
+    elements.ownNumber.addEventListener("click", () => {
+      copyText(elements.ownNumber.textContent, "本机号码已复制");
+    });
+    elements.balanceCard.addEventListener("click", () => {
+      elements.balanceAmount.value = currentBalance === null ? "" : currentBalance.toFixed(2);
+      elements.balanceDialog.showModal();
+      elements.balanceAmount.focus();
+      elements.balanceAmount.select();
+    });
+
+    elements.balanceCancel.addEventListener("click", () => {
+      elements.balanceDialog.close();
+    });
+
+    elements.balanceQueryButton.addEventListener("click", () => {
+      elements.balanceDialog.close();
+      openConfirmation(
+        "CTExcel 余额查询",
+        "将向 888 发送 BAL。回复会进入收件箱并转发到 Telegram，匹配已验证格式时自动更新现金余额。\n\n888 服务短信是否收费以 CTExcel 实际账单为准。",
+        async () => {
+          try {
+            await api("/api/balance-query", { method: "POST", body: "{}" });
+            showToast("BAL 已发送，正在等待 888 回复");
+            pollStatus();
+          } catch (error) {
+            showToast(`余额查询失败：${error.message}`, true);
+          }
+        }
+      );
+    });
+
+    elements.balanceForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const amount = Number(elements.balanceAmount.value);
+      await withBusyButton(elements.balanceSubmit, "保存中…", async () => {
+        try {
+          await api("/api/balance", {
+            method: "POST",
+            body: JSON.stringify({ amount })
+          });
+          elements.balanceDialog.close();
+          showToast("余额已校准");
+          await pollStatus();
+        } catch (error) {
+          showToast(`校准失败：${error.message}`, true);
+        }
+      });
+    });
+
+    elements.sendForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const recipient = elements.recipient.value.trim();
+      const text = elements.messageText.value;
+      if (!recipient || !text) return;
+      const previewText = text.trim() ? text : "[仅空格]";
+      openConfirmation(
+        "确认发送短信？",
+        `收件人：${recipient}\n正文：\n${previewText}\n\n短信可能产生费用，请确认。`,
+        async () => {
+          await withBusyButton(elements.sendButton, "发送中…", async () => {
+            try {
+              await api("/api/send", {
+                method: "POST",
+                body: JSON.stringify({ to: recipient, text })
+              });
+              elements.messageText.value = "";
+              updateCounter();
+              showToast("短信发送成功");
+              pollStatus();
+            } catch (error) {
+              showToast(`发送失败：${error.message}`, true);
+            }
+          });
+        }
+      );
+    });
+
+    elements.clearButton.addEventListener("click", () => {
+      openConfirmation(
+        "清空模块收件槽？",
+        "SIM 上的短信将被删除，本地存档会保留。",
+        async () => {
+          await withBusyButton(elements.clearButton, "清理中…", async () => {
+            try {
+              await api("/api/clear", { method: "POST", body: "{}" });
+              showToast("模块收件槽已清空，本地存档已保留");
+              await Promise.all([pollMessages(), pollStatus()]);
+            } catch (error) {
+              showToast(`清空失败：${error.message}`, true);
+            }
+          });
+        }
+      );
+    });
+
+    elements.carrierTestButton.addEventListener("click", () => {
+      openConfirmation(
+        "CTExcel BAL 收发自检",
+        "将向 888 发送 BAL，并等待余额短信回复。\n\n888 服务短信是否收费以 CTExcel 实际账单为准。",
+        async () => {
+          await withBusyButton(elements.carrierTestButton, "发送中…", async () => {
+            try {
+              await api("/api/carrier-test", { method: "POST", body: "{}" });
+              showToast("BAL 已发送，正在等待 888 回复");
+              pollStatus();
+            } catch (error) {
+              showToast(`自检失败：${error.message}`, true);
+            }
+          });
+        }
+      );
+    });
+
+    elements.dialogCancel.addEventListener("click", () => {
+      confirmAction = null;
+      elements.confirmDialog.close();
+    });
+
+    elements.dialogConfirm.addEventListener("click", async () => {
+      const action = confirmAction;
+      confirmAction = null;
+      elements.confirmDialog.close();
+      if (action) await action();
+    });
+
+    elements.confirmDialog.addEventListener("cancel", () => {
+      confirmAction = null;
+    });
+
+    updateCounter();
+    pollStatus();
+    pollMessages();
+    window.setInterval(pollStatus, 3000);
+    window.setInterval(pollMessages, 2000);
+  </script>
+</body>
+</html>

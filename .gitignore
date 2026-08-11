@@ -1,0 +1,38 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Private runtime state and credentials.
+app.log
+archive.jsonl
+state.json
+tg_state.json
+config.json
+runtime-python*.txt
+
+# Private migration payloads and generated installers.
+dist/
+installer/assets/*.exe
+installer/assets/*.msi
+installer/assets/wheels/*.whl
+
+# Quectel driver binaries are not redistributed by this repository.
+drivers/*
+!drivers/README.md
+
+# Local working notes and historical agent specifications.
+AGENTS.md
+CLAUDE.md
+SPEC*.md
+*.bak.py
+*.bak.html
+
+# Editor and OS files.
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
