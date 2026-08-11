@@ -103,7 +103,7 @@ pwsh -NoProfile -File .\tools\Bind-DjiAtPort.ps1 -Mode ListOnly
 pwsh -NoProfile -File .\tools\Bind-DjiAtPort.ps1 -Mode Install
 ```
 
-`Install` 只处理精确的 `MI_02`。不要给其他 MI 接口绑定驱动，也不要安装 WWAN/NDIS 网卡。若提示需要重启或重新枚举，先拔插模块；没有必要恢复 SIM7600 的 USB PID，也不要改 DJI 原始 VID/PID。
+`Install` 只处理精确的 `MI_02`。不要给其他 MI 接口绑定驱动，也不要安装 WWAN/NDIS 网卡。若提示需要重启或重新枚举，先拔插模块；不要改 DJI 原始 VID/PID。
 
 驱动安装属于新电脑首次部署中唯一需要管理员权限的步骤。脚本的 `ListOnly` 路径已在当前电脑用随包驱动实测；`Install` 路径仍应在第一次新电脑迁移时按本说明现场验收，不把“脚本可运行”当成“驱动已成功绑定”。
 
@@ -122,7 +122,7 @@ pwsh -NoProfile -File .\tools\Test-NewPcReadiness.ps1
 - 项目数据文件；
 - 驱动哈希和签名；
 - DJI `MI_02`、当前动态 COM 号和已安装驱动版本；
-- Windows 中没有 DJI/Quectel/SimTech 蜂窝网卡；
+- Windows 中没有 DJI/Quectel 蜂窝网卡；
 - 7597 空闲或已由正确的 DJI 服务占用；
 - Telegram 配置存在，且只检测代理端口是否可连接，不显示 token、owner 或短信内容。
 

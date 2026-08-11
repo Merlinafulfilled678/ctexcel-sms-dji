@@ -12,7 +12,6 @@ from typing import Any
 
 from modem_profile import (
     DJI_QDC507_PROFILE,
-    SIM7600_PROFILE,
     diagnostic_commands,
     find_supported_at_port,
     initialization_commands,
@@ -35,7 +34,6 @@ def load_stored_sms_parser() -> Any:
         "normalize_sim_time",
         "decode_message_body",
         "extract_code",
-        "decode_numeric_sender",
         "message_id",
         "parse_message_response",
     }
@@ -82,23 +80,22 @@ class ModemProfileTests(unittest.TestCase):
         self.assertEqual(match.device, "COM42")
         self.assertEqual(match.profile, DJI_QDC507_PROFILE)
 
-    def test_sim7600_remains_supported(self) -> None:
+    def test_non_dji_at_port_is_rejected(self) -> None:
         ports = [
             SimpleNamespace(
                 device="COM11",
-                description="SimTech HS-USB AT Port 9006",
-                vid=0x1E0E,
-                pid=0x9006,
+                description="Generic USB AT Port",
+                vid=0x1234,
+                pid=0x5678,
             )
         ]
 
         match = find_supported_at_port(ports)
 
-        self.assertIsNotNone(match)
-        self.assertEqual(match.profile, SIM7600_PROFILE)
+        self.assertIsNone(match)
 
     def test_qdc_initialization_uses_me_without_mutating_ims_or_mbn(self) -> None:
-        commands = initialization_commands(DJI_QDC507_PROFILE)
+        commands = initialization_commands()
 
         self.assertIn('AT+CPMS="ME","ME","ME"', commands)
         self.assertIn("AT+CNMI=2,1,0,0,0", commands)
@@ -106,18 +103,10 @@ class ModemProfileTests(unittest.TestCase):
         self.assertFalse(any("QMBNCFG" in command for command in commands))
         self.assertFalse(any('QCFG="ims",' in command for command in commands))
 
-    def test_sim7600_initialization_keeps_packet_domain_preference(self) -> None:
-        commands = initialization_commands(SIM7600_PROFILE)
+    def test_cmti_parser_accepts_me_and_mt(self) -> None:
+        events = parse_cmti_events('+CMTI: "ME",2\r\n+CMTI: "MT",9')
 
-        self.assertIn('AT+CPMS="SM","SM","SM"', commands)
-        self.assertIn("AT+CGSMS=2", commands)
-
-    def test_cmti_parser_accepts_me_and_sm(self) -> None:
-        events = parse_cmti_events(
-            '+CMTI: "ME",2\r\n+CMTI: "SM",7\r\n+CMTI: "MT",9'
-        )
-
-        self.assertEqual(events, [("ME", 2), ("SM", 7), ("MT", 9)])
+        self.assertEqual(events, [("ME", 2), ("MT", 9)])
 
     def test_quectel_ims_requires_configured_and_registered_flags(self) -> None:
         self.assertEqual(
@@ -130,7 +119,7 @@ class ModemProfileTests(unittest.TestCase):
         )
 
     def test_qdc_diagnostics_are_read_only_and_include_ims(self) -> None:
-        commands = {command for _, command in diagnostic_commands(DJI_QDC507_PROFILE)}
+        commands = {command for _, command in diagnostic_commands()}
 
         self.assertIn('AT+QCFG="ims"', commands)
         self.assertIn('AT+QCFG="ltesms/format"', commands)

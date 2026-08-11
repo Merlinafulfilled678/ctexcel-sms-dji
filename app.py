@@ -21,7 +21,7 @@ import sys
 import serial
 from flask import Flask, jsonify, request, send_from_directory
 from serial.tools import list_ports
-from carrier_profile import ACTIVE_CARRIER, LEGACY_CARRIER_KEY, parse_balance_amount
+from carrier_profile import ACTIVE_CARRIER, parse_balance_amount
 from modem_profile import (
     ModemProfile,
     PortMatch,
@@ -60,7 +60,7 @@ def load_own_number(config_path: Path) -> str:
 OWN_NUMBER = load_own_number(CONFIG_PATH)
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SMS_TOOL_PORT", "7597"))
-SUPPORTED_AT_PORT_HINT = "Quectel USB AT Port / SimTech HS-USB AT Port"
+SUPPORTED_AT_PORT_HINT = "Quectel USB AT Port"
 WWAN_CHECK_DEBOUNCE_SECONDS = 10.0  # 仅启动时和打开页面时实测;防抖避免多标签页重复触发
 SMS_SUBMIT_TIMEOUT_SECONDS = 120.0
 MODEM_REQUEST_TIMEOUT_SECONDS = 150.0
@@ -360,29 +360,6 @@ def balance_from_message(message: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def decode_numeric_sender(sender: str) -> str:
-    """SIM7600 在 GSM 字符集下会把字母型发件人(如 giffgaff)输出为连写的十进制字符码。
-
-    仅当整串为纯数字、长度超过正常电话号码、且能完整解码为可打印 ASCII 时才转换。
-    """
-    if not re.fullmatch(r"[0-9]{16,}", sender):
-        return sender
-    decoded: list[str] = []
-    position = 0
-    while position < len(sender):
-        three = int(sender[position : position + 3]) if position + 3 <= len(sender) else -1
-        two = int(sender[position : position + 2]) if position + 2 <= len(sender) else -1
-        if 100 <= three <= 126:
-            decoded.append(chr(three))
-            position += 3
-        elif 32 <= two <= 99:
-            decoded.append(chr(two))
-            position += 2
-        else:
-            return sender
-    return "".join(decoded)
-
-
 def message_id(sender: str, timestamp: str, body: str) -> str:
     raw = f"{sender}\0{timestamp}\0{body}".encode("utf-8")
     return hashlib.sha256(raw).hexdigest()[:20]
@@ -400,7 +377,7 @@ def parse_direct_message(header: str, body: str) -> dict[str, Any] | None:
     timestamp = fields[2].strip() if len(fields) > 2 else ""
     dcs = parse_int(fields[6]) if len(fields) > 6 else None
     decoded_body = decode_message_body(body, dcs)
-    normalized_sender = decode_numeric_sender(sender) or "未知发件人"
+    normalized_sender = sender or "未知发件人"
     normalized_time = normalize_sim_time(timestamp)
     return {
         "index": None,
@@ -485,7 +462,7 @@ def parse_message_response(
                 dcs = parse_int(fields[7]) if len(fields) > 7 else None
             current = {
                 "index": index,
-                "sender": decode_numeric_sender(sender) or "未知发件人",
+                "sender": sender or "未知发件人",
                 "time": normalize_sim_time(timestamp),
                 "_dcs": dcs,
                 "direction": "out" if status.upper().startswith("STO") else "in",
@@ -538,9 +515,6 @@ class StateStore:
         source = value.get("source")
         timestamp = value.get("time")
         carrier = value.get("carrier")
-        if carrier is None:
-            # V2-V4 records predate carrier tagging and therefore belong to giffgaff.
-            carrier = LEGACY_CARRIER_KEY
         if (
             isinstance(amount, bool)
             or not isinstance(amount, (int, float))
@@ -795,9 +769,9 @@ class MessageStore:
     def _delivery_sort_value(message: dict[str, Any]) -> tuple[int, float, str]:
         """Order physical segments by observed delivery, newest first later.
 
-        SIM7600 has repeatedly delivered concatenated SMS parts tail-first. The
-        archive position is the most reliable ordering evidence retained by
-        older records; received_at is the fallback for records without it.
+        QDC507 can deliver concatenated SMS parts tail-first. The archive
+        position is the most reliable ordering evidence; received_at is the
+        fallback for records without it.
         """
         archive_order = message.get("_archive_order")
         if isinstance(archive_order, int):
@@ -843,9 +817,9 @@ class MessageStore:
                 merged.append(group[0])
                 continue
 
-            # Existing SIM7600 archive evidence shows multipart pieces arriving
-            # tail-first. Reverse observed delivery order instead of using the
-            # content hash as a same-second tiebreaker.
+            # QDC507 can deliver multipart pieces tail-first. Reverse observed
+            # delivery order instead of using the content hash as a same-second
+            # tiebreaker.
             ordered = sorted(group, key=self._delivery_sort_value, reverse=True)
             combined = dict(ordered[0])
             combined["body"] = "".join(str(item["body"]) for item in ordered)
@@ -1182,7 +1156,7 @@ class ModemWorker(threading.Thread):
         if profile is None:
             raise ATCommandError("尚未识别模块类型")
 
-        for command in initialization_commands(profile):
+        for command in initialization_commands():
             self._command(command)
 
         diagnostics: dict[str, Any] = {
@@ -1200,7 +1174,7 @@ class ModemWorker(threading.Thread):
             },
             "errors": {},
         }
-        for key, command in diagnostic_commands(profile):
+        for key, command in diagnostic_commands():
             try:
                 response = self._command(command)
                 diagnostics[key] = (
@@ -1216,11 +1190,7 @@ class ModemWorker(threading.Thread):
         ims_registered = bool(isinstance(ims, dict) and ims.get("registered"))
         self._set_status(
             diagnostics=diagnostics,
-            sms_ready=(
-                ims_registered
-                if profile.supports_quectel_ims_query
-                else None
-            ),
+            sms_ready=ims_registered,
         )
 
         response = self._command('AT+CMGL="ALL"')
@@ -1231,7 +1201,7 @@ class ModemWorker(threading.Thread):
         archive_error = self._archive_and_cleanup(messages)
         if archive_error:
             errors.append(archive_error)
-        if profile.supports_quectel_ims_query and not ims_registered:
+        if not ims_registered:
             errors.append("IMS 尚未注册，CTExcel 短信承载不可用")
         return "；".join(errors) if errors else None
 
@@ -1326,12 +1296,7 @@ class ModemWorker(threading.Thread):
         cereg = self._query_status_command("AT+CEREG?")
         cops = self._query_status_command("AT+COPS?")
         cpms = self._query_status_command("AT+CPMS?")
-        profile = self._modem_profile
-        ims_response = (
-            self._query_status_command('AT+QCFG="ims"')
-            if profile is not None and profile.supports_quectel_ims_query
-            else None
-        )
+        ims_response = self._query_status_command('AT+QCFG="ims"')
 
         updates: dict[str, Any] = {"connected": True}
         if csq:
@@ -1353,15 +1318,12 @@ class ModemWorker(threading.Thread):
             cgreg=cgreg,
             cereg=cereg,
         )
-        if profile is not None and profile.supports_quectel_ims_query:
-            diagnostics["ims"] = parse_quectel_ims(ims_response)
-            updates["sms_ready"] = bool(
-                updates["registered"]
-                and isinstance(diagnostics["ims"], dict)
-                and diagnostics["ims"].get("registered")
-            )
-        else:
-            updates["sms_ready"] = None
+        diagnostics["ims"] = parse_quectel_ims(ims_response)
+        updates["sms_ready"] = bool(
+            updates["registered"]
+            and isinstance(diagnostics["ims"], dict)
+            and diagnostics["ims"].get("registered")
+        )
         updates["diagnostics"] = diagnostics
         if cops:
             match = re.search(r'\+COPS:\s*\d+\s*,\s*\d+\s*,\s*"([^"]*)"', cops)
@@ -1375,8 +1337,7 @@ class ModemWorker(threading.Thread):
                 updates["storage_used"] = int(match.group(1))
                 updates["storage_total"] = int(match.group(2))
         required_responses = [csq, creg, cgreg, cereg, cops, cpms]
-        if profile is not None and profile.supports_quectel_ims_query:
-            required_responses.append(ims_response)
+        required_responses.append(ims_response)
         if all(value is not None for value in required_responses):
             updates["error"] = None
         self._set_status(**updates)
@@ -1410,7 +1371,9 @@ class ModemWorker(threading.Thread):
             return False
         try:
             profile = self._modem_profile
-            if profile is not None and storage not in {profile.sms_storage, "MT"}:
+            if profile is None:
+                raise ATCommandError("尚未识别 DJI QDC507")
+            if storage not in {profile.sms_storage, "MT"}:
                 raise ATCommandError(
                     f"收到未配置存储 {storage} 的短信通知，当前为 {profile.sms_storage}"
                 )

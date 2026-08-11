@@ -231,10 +231,10 @@ try {
     $netOutput = @(& $pnputil /enum-devices /connected /class Net 2>&1)
     if ($LASTEXITCODE -ne 0) {
         Add-Check WARN 'WWAN safety' 'Could not enumerate connected Windows Net devices.'
-    } elseif (($netOutput -join "`n") -match '(?i)DJI|Quectel|QDC507|SimTech|SIM7600') {
+    } elseif (($netOutput -join "`n") -match '(?i)DJI|Quectel|QDC507') {
         Add-Check FAIL 'WWAN safety' 'A matching cellular network adapter is present. Do not start until it is removed or safely disabled.'
     } else {
-        Add-Check PASS 'WWAN safety' 'No DJI, Quectel or SimTech Windows network adapter is present.'
+        Add-Check PASS 'WWAN safety' 'No DJI or Quectel Windows network adapter is present.'
     }
 } catch {
     Add-Check WARN 'WWAN safety' 'WWAN device check failed.'

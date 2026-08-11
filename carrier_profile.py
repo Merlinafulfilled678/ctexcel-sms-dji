@@ -39,8 +39,6 @@ class CarrierProfile:
         }
 
 
-LEGACY_CARRIER_KEY = "giffgaff"
-
 _CTEXCEL_BALANCE_SENDERS = frozenset({"888", "ctexcel"})
 _CTEXCEL_BALANCE_PATTERN = re.compile(
     r"您当前余额为\s*£\s*([0-9]+(?:\.[0-9]{1,2})?)"

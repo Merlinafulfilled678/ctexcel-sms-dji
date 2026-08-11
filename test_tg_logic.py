@@ -70,7 +70,7 @@ class TelegramBotLogicTests(unittest.TestCase):
             json.dumps(
                 {
                     "id": "历史短信",
-                    "sender": "giffgaff",
+                    "sender": "CTExcel",
                     "time": "2026-07-18T08:00:00+01:00",
                     "body": "旧短信",
                     "direction": "in",
@@ -183,7 +183,7 @@ class TelegramBotLogicTests(unittest.TestCase):
             bot.notify_incoming_sms(
                 {
                     "id": source_id,
-                    "sender": "giffgaff",
+                    "sender": "CTExcel",
                     "time": "2026-07-24T16:33:50+01:00",
                     "body": "一个物理分段",
                     "direction": "in",
@@ -194,7 +194,7 @@ class TelegramBotLogicTests(unittest.TestCase):
         logical_messages.append(
             {
                 "id": "logical-message",
-                "sender": "giffgaff",
+                "sender": "CTExcel",
                 "time": "2026-07-24T16:33:50+01:00",
                 "body": "Hey, complete multipart message. Cheers.",
                 "code": None,
@@ -227,7 +227,7 @@ class TelegramBotLogicTests(unittest.TestCase):
         )
         logical = {
             "id": "old-logical-message",
-            "sender": "giffgaff",
+            "sender": "CTExcel",
             "time": "2026-07-22T14:27:37+01:00",
             "body": "完整的旧长短信",
             "direction": "in",
@@ -314,7 +314,6 @@ class TelegramBotLogicTests(unittest.TestCase):
         self.assertIn("/setbalance", help_text)
         self.assertIn("CTExcel", help_text)
         self.assertIn("DJI QDC507", help_text)
-        self.assertNotIn("SIM7600", help_text)
 
     def test_command_menu_registers_all_commands_once(self) -> None:
         bot = self.make_bot()
@@ -336,7 +335,6 @@ class TelegramBotLogicTests(unittest.TestCase):
                 "help",
             ],
         )
-        self.assertNotIn("SIM7600", json.dumps(commands, ensure_ascii=False))
 
     def test_balance_and_history_commands_use_injected_storage_logic(self) -> None:
         with self.archive_path.open("a", encoding="utf-8") as handle:
@@ -366,7 +364,7 @@ class TelegramBotLogicTests(unittest.TestCase):
         bot._handle_update(self.private_message(4, 12345, "/history 2"))
         history = bot._outbox[-1].payload["text"]
         self.assertIn("[发送] 发往 +8613800000000", history)
-        self.assertIn("[接收] giffgaff", history)
+        self.assertIn("[接收] CTExcel", history)
 
     def test_missing_token_disables_bot_without_network_calls(self) -> None:
         config = json.loads(self.config_path.read_text(encoding="utf-8"))

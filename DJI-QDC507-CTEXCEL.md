@@ -4,7 +4,7 @@
 
 ## 结论
 
-可行。大疆 4G 模块一代已在 Windows 上通过 AT 串口驻留中国电信 LTE，并在 ROW MBN 下建立 IMS 会话；用户触发 CTExcel 验证码后，短信已进入 QDC507 的 `ME` 存储并可通过 `CMGR` 读取。原 SIM7600CE-T 的失败点是没有建立同等 IMS 短信通道，而不是 Web、Telegram 或正文解析。
+可行。大疆 4G 模块一代已在 Windows 上通过 AT 串口驻留中国电信 LTE，并在 ROW MBN 下建立 IMS 会话；用户触发 CTExcel 验证码后，短信已进入 QDC507 的 `ME` 存储并可通过 `CMGR` 读取。
 
 入站底层验收、应用受控启动和出站均已完成：模块现存短信能够逐条归档，后续新短信能够实时进入 Web 与 Telegram；经用户明确授权的一次 `BAL` 查询取得真实 `+CMGS`，官方回复分段被合并并自动更新余额。CTExcel 在 QDC507 上的收发 SMS over IMS 已实测可用。
 
@@ -89,16 +89,16 @@ pwsh -NoProfile -File .\tools\Set-DjiCarrierProfile.ps1 -Mode RestoreIms
 DJI 版本保留旧工具的单串口线程、UTF-8 JSONL 归档、验证码识别、Web 和 Telegram 功能，并增加：
 
 - 识别 `Quectel USB AT Port` 与 DJI/Quectel USB 身份；
-- QDC507 使用 `ME`，SIM7600 继续使用 `SM`；
+- QDC507 使用 `ME`；
 - `+CMTI` 接受任意合法存储名并携带 storage/index；
 - QDC507 DCS=8 的 UCS2 正文回归测试；
 - 每 5 秒只读更新 IMS 会话状态，只有 EPS + IMS 同时成立才显示“IMS 短信在线”；
 - QDC507 初始化不写 `CGSMS=2`，也不写 IMS、MBN、USB 身份或数据连接状态；
 - WWAN 检测限制在 Windows `Net` 类，未安装的 DJI 接口不会被误报为启用网卡。
 
-应用首次真实启动已按设计完成：读取模块中的现存短信，逐条写入有效 JSONL 后删除模块原件。停止应用后再次独立读取模块，确认 IMS/EPS 仍在线且存储已清理。随后又以 `pythonw`、绝对 `app.py` 路径和临时端口验证无窗口启动：应用通过动态发现连接 AT 端口、识别 `dji_qdc507`、报告短信就绪，并在测试后停止和释放端口。启动脚本的既有实例判断也已收紧，旧 CTExcel/SIM7600 服务会被判定为端口冲突，不会被误认成 DJI 版。
+应用首次真实启动已按设计完成：读取模块中的现存短信，逐条写入有效 JSONL 后删除模块原件。停止应用后再次独立读取模块，确认 IMS/EPS 仍在线且存储已清理。随后又以 `pythonw`、绝对 `app.py` 路径和临时端口验证无窗口启动：应用通过动态发现连接 AT 端口、识别 `dji_qdc507`、报告短信就绪，并在测试后停止和释放端口。启动脚本只把 `ctexcel + dji_qdc507` 识别为既有实例，其他服务占用端口时会报告冲突。
 
-经用户授权完成生产切换后，旧 SIM7600 服务停止，DJI 服务使用默认本地端口运行；没有创建启动文件夹、Run 注册表或计划任务。私人 Telegram 配置和去重状态在停止旧实例后迁移，并把已有归档 ID 纳入历史基线，避免迁移时补发旧短信。Bot API 与无隐私测试消息均通过，应用日志没有启动失败或 traceback。
+DJI 服务已使用默认本地端口投入运行；没有创建启动文件夹、Run 注册表或计划任务。私人 Telegram 配置和去重状态把已有归档 ID 纳入历史基线，避免迁移时补发旧短信。Bot API 与无隐私测试消息均通过，应用日志没有启动失败或 traceback。
 
 生产实例持续运行期间，用户触发的新验证码成为独立入站记录，逻辑消息与原始归档一致；模块原件在落盘后被清理，Telegram 只推送新增逻辑短信且无通信错误。该结果完成了实时 `+CMTI → CMGR → 先归档 → 删除模块原件 → Web/API → Telegram` 链路验收。
 

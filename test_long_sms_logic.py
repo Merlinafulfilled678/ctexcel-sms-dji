@@ -59,7 +59,6 @@ def load_direct_sms_helpers() -> tuple[Any, type]:
         "normalize_sim_time",
         "decode_message_body",
         "extract_code",
-        "decode_numeric_sender",
         "message_id",
         "parse_direct_message",
         "DirectSmsUrcAssembler",

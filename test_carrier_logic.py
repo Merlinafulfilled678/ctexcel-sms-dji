@@ -12,12 +12,8 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from carrier_profile import (
-    ACTIVE_CARRIER,
-    LEGACY_CARRIER_KEY,
-    parse_balance_amount,
-)
-from modem_profile import SIM7600_PROFILE, diagnostic_commands, initialization_commands
+from carrier_profile import ACTIVE_CARRIER, parse_balance_amount
+from modem_profile import diagnostic_commands, initialization_commands
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -36,7 +32,6 @@ def load_state_store_class() -> type:
     )
     namespace: dict[str, Any] = {
         "ACTIVE_CARRIER": ACTIVE_CARRIER,
-        "LEGACY_CARRIER_KEY": LEGACY_CARRIER_KEY,
         "Any": Any,
         "Path": Path,
         "date": date,
@@ -186,7 +181,7 @@ class CarrierStateTests(unittest.TestCase):
             path.write_text("not json", encoding="utf-8")
             self.assertEqual(self.load_own_number(path), "")
 
-    def test_legacy_balance_and_activity_are_hidden_without_deleting_state(self) -> None:
+    def test_untagged_balance_and_activity_are_hidden_without_deleting_state(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "state.json"
             path.write_text(
@@ -296,11 +291,11 @@ class CarrierStateTests(unittest.TestCase):
             (False, False),
         )
 
-    def test_sim7600_initialization_prefers_packet_domain_sms(self) -> None:
-        self.assertIn("AT+CGSMS=2", initialization_commands(SIM7600_PROFILE))
+    def test_qdc_initialization_omits_packet_domain_sms_preference(self) -> None:
+        self.assertNotIn("AT+CGSMS=2", initialization_commands())
 
     def test_modem_initialization_caches_safe_sms_diagnostics(self) -> None:
-        commands = {command for _, command in diagnostic_commands(SIM7600_PROFILE)}
+        commands = {command for _, command in diagnostic_commands()}
         self.assertTrue(
             {"AT+CGMM", "AT+CGMR", "AT+CNMI?", "AT+CSMS?", "AT+CGSMS?"}
             <= commands

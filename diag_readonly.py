@@ -1,4 +1,4 @@
-"""DJI QDC507 / SIM7600 只读 AT 诊断。
+"""DJI QDC507 只读 AT 诊断。
 
 严格约束：
 - 只发查询命令，绝不发送短信、绝不写 NV、绝不发数据业务指令
@@ -85,7 +85,7 @@ def clean(response: str, command: str) -> str:
 def main() -> int:
     match = find_port()
     if match is None:
-        print("未找到受支持的 Quectel/SimTech AT 口，请确认设备已插好且 SMS 工具已停止。")
+        print("未找到 DJI QDC507 的 Quectel AT 口，请确认设备已插好且 SMS 工具已停止。")
         return 1
     port = match.device
     print(f"模块：{match.profile.display_name}\nAT 口：{port}\n")

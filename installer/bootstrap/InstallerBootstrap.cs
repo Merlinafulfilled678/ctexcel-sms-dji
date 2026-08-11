@@ -634,8 +634,8 @@ namespace CTExcelSmsDjiInstaller
             ProcessResult result = RunProcess(pnputil, "/enum-devices /connected /class Net", false);
             if (result.ExitCode != 0)
                 throw ProcessFailure("无法核验 WWAN 安全状态", pnputil, result);
-            if (Regex.IsMatch(result.CombinedOutput, "DJI|Quectel|QDC507|SimTech|SIM7600", RegexOptions.IgnoreCase))
-                throw new InstallerFailure("检测到 DJI/Quectel/SimTech 蜂窝网卡。为避免产生移动数据流量，安装器不会继续；请先安全移除或禁用该 WWAN 网卡。 ");
+            if (Regex.IsMatch(result.CombinedOutput, "DJI|Quectel|QDC507", RegexOptions.IgnoreCase))
+                throw new InstallerFailure("检测到 DJI/Quectel 蜂窝网卡。为避免产生移动数据流量，安装器不会继续；请先安全移除或禁用该 WWAN 网卡。 ");
             Report(currentStep, "未检测到相关 WWAN 网卡：通过");
         }
 

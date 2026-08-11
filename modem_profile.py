@@ -12,15 +12,13 @@ class ModemProfile:
     port_markers: tuple[str, ...]
     usb_ids: frozenset[tuple[int, int]]
     sms_storage: str
-    set_packet_sms_preference: bool
-    supports_quectel_ims_query: bool
 
     def status_metadata(self) -> dict[str, Any]:
         return {
             "key": self.key,
             "name": self.display_name,
             "sms_storage": self.sms_storage,
-            "ims_query_supported": self.supports_quectel_ims_query,
+            "ims_query_supported": True,
         }
 
 
@@ -38,22 +36,7 @@ DJI_QDC507_PROFILE = ModemProfile(
     # identity used by some community guides; both expose the same AT surface.
     usb_ids=frozenset({(0x2CA3, 0x4006), (0x2C7C, 0x0125)}),
     sms_storage="ME",
-    set_packet_sms_preference=False,
-    supports_quectel_ims_query=True,
 )
-
-SIM7600_PROFILE = ModemProfile(
-    key="sim7600",
-    display_name="SIM7600CE-T",
-    port_markers=("SimTech HS-USB AT Port",),
-    usb_ids=frozenset(),
-    sms_storage="SM",
-    set_packet_sms_preference=True,
-    supports_quectel_ims_query=False,
-)
-
-SUPPORTED_MODEM_PROFILES = (DJI_QDC507_PROFILE, SIM7600_PROFILE)
-
 
 def _port_match_score(port: Any, profile: ModemProfile) -> int:
     description = str(getattr(port, "description", "") or "")
@@ -69,60 +52,52 @@ def _port_match_score(port: Any, profile: ModemProfile) -> int:
 
 
 def find_supported_at_port(ports: Iterable[Any]) -> PortMatch | None:
-    """Return the strongest supported AT-port match without opening a port."""
+    """Return the strongest DJI QDC507 AT-port match without opening a port."""
     best: tuple[int, PortMatch] | None = None
     for port in ports:
         device = str(getattr(port, "device", "") or "").strip()
         if not device:
             continue
-        for profile in SUPPORTED_MODEM_PROFILES:
-            score = _port_match_score(port, profile)
-            if score <= 0:
-                continue
-            candidate = PortMatch(device=device, profile=profile)
-            if best is None or score > best[0]:
-                best = (score, candidate)
+        score = _port_match_score(port, DJI_QDC507_PROFILE)
+        if score <= 0:
+            continue
+        candidate = PortMatch(device=device, profile=DJI_QDC507_PROFILE)
+        if best is None or score > best[0]:
+            best = (score, candidate)
     return best[1] if best is not None else None
 
 
-def initialization_commands(profile: ModemProfile) -> tuple[str, ...]:
-    """Build the non-data SMS setup for a detected modem family.
+def initialization_commands() -> tuple[str, ...]:
+    """Build the non-data SMS setup for DJI QDC507.
 
     The QDC507 path deliberately does not change IMS, MBN, USB identity, or
     packet-data state. IMS was configured separately and is only queried by the
     application.
     """
     commands = ["ATE0", "AT+CMGF=1"]
-    if profile.set_packet_sms_preference:
-        commands.append("AT+CGSMS=2")
     commands.extend(
         (
             'AT+CSCS="GSM"',
             "AT+CSDH=1",
-            f'AT+CPMS="{profile.sms_storage}","{profile.sms_storage}",'
-            f'"{profile.sms_storage}"',
+            f'AT+CPMS="{DJI_QDC507_PROFILE.sms_storage}",'
+            f'"{DJI_QDC507_PROFILE.sms_storage}",'
+            f'"{DJI_QDC507_PROFILE.sms_storage}"',
             "AT+CNMI=2,1,0,0,0",
         )
     )
     return tuple(commands)
 
 
-def diagnostic_commands(profile: ModemProfile) -> tuple[tuple[str, str], ...]:
-    commands: list[tuple[str, str]] = [
+def diagnostic_commands() -> tuple[tuple[str, str], ...]:
+    return (
         ("model", "AT+CGMM"),
         ("firmware", "AT+CGMR"),
         ("cnmi", "AT+CNMI?"),
         ("csms", "AT+CSMS?"),
         ("cgsms", "AT+CGSMS?"),
-    ]
-    if profile.supports_quectel_ims_query:
-        commands.extend(
-            (
-                ("ims", 'AT+QCFG="ims"'),
-                ("ltesms_format", 'AT+QCFG="ltesms/format"'),
-            )
-        )
-    return tuple(commands)
+        ("ims", 'AT+QCFG="ims"'),
+        ("ltesms_format", 'AT+QCFG="ltesms/format"'),
+    )
 
 
 def parse_cmti_events(text: str) -> list[tuple[str, int]]:
@@ -155,7 +130,7 @@ def parse_wwan_state(output: str) -> str:
         block
         for block in blocks
         if re.search(
-            r"(?i)(VID_(?:2CA3|2C7C|1E0E)|SimTech|Quectel|Baiwang|DJI)",
+            r"(?i)(VID_(?:2CA3|2C7C)|Quectel|Baiwang|DJI)",
             block,
         )
     ]

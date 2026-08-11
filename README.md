@@ -6,7 +6,7 @@
 
 ## 中文
 
-一个运行在 Windows 本机的短信收发工具，主设备为大疆 4G 模块一代 QDC507，通过 Quectel AT 串口管理 CTExcel 英国 SIM；同时保留旧 SIM7600 的兼容路径。
+一个运行在 Windows 本机的短信收发工具，专用于大疆 4G 模块一代 QDC507，通过 Quectel AT 串口管理 CTExcel 英国 SIM。
 
 Flask 后端只监听 `127.0.0.1:7597`，前端无外部 CDN。短信归档、余额和配置默认保存在项目目录；Telegram Bot 为可选功能。
 
@@ -14,14 +14,14 @@ Flask 后端只监听 `127.0.0.1:7597`，前端无外部 CDN。短信归档、�
 
 ### 功能
 
-- 自动发现 `Quectel USB AT Port` 或旧 `SimTech HS-USB AT Port`，不写死 COM 号。
+- 自动发现 `Quectel USB AT Port`，不写死 COM 号。
 - 接收 `+CMTI`、`+CMT` 与存储新增短信，支持 UCS2 中文和验证码识别。
 - 新短信先以 UTF-8 写入 `archive.jsonl`，确认落盘后才删除模块原件。
 - 合并相邻长短信分段，包括已验证的“尾段先到”场景。
 - Web 页面查看收件箱、已发送、余额、IMS、注册、信号和模块存储。
 - 向 `888` 发送 `BAL` 查询 CTExcel 余额；仅解析明确的现金余额字段，不根据发送记录推算扣费。
 - 可选 Telegram Bot：状态、历史、余额、二次确认发送、主动告警和重启去重。
-- 只读检测 DJI/Quectel/SimTech 蜂窝网卡；应用不会建立移动数据连接。
+- 只读检测 DJI/Quectel 蜂窝网卡；应用不会建立移动数据连接。
 
 ### 安全边界
 
@@ -38,7 +38,6 @@ Flask 后端只监听 `127.0.0.1:7597`，前端无外部 CDN。短信归档、�
 - PowerShell 7
 - Python 3.14
 - DJI QDC507：`MI_02` 已绑定为 `Quectel USB AT Port`
-- 可选旧设备：SIM7600 对应的 AT 串口驱动
 
 公开仓库不包含 Quectel 驱动、Python/PowerShell 安装包、wheel 或私人迁移 EXE。驱动获取与绑定边界见 [drivers/README.md](drivers/README.md)。
 
@@ -85,7 +84,6 @@ http://127.0.0.1:7597/
 
 应用不会替用户切换运营商 profile。相关只读诊断、受控配置和回退说明见：
 
-- [CTEXCEL-SMS-DIAGNOSIS.md](CTEXCEL-SMS-DIAGNOSIS.md)
 - [DJI-QDC507-CTEXCEL.md](DJI-QDC507-CTEXCEL.md)
 
 ### Telegram 命令
@@ -140,7 +138,7 @@ python test_installer_assets.py
 
 ## English
 
-A local Windows application for sending and receiving SMS messages. Its primary hardware target is the first-generation DJI 4G module (QDC507), accessed through the Quectel AT serial port with a CTExcel UK SIM. A legacy compatibility path for the SIM7600 is also retained.
+A local Windows application for sending and receiving SMS messages, built specifically for the first-generation DJI 4G module (QDC507). It manages a CTExcel UK SIM through the Quectel AT serial port.
 
 The Flask backend listens only on `127.0.0.1:7597`, and the web interface uses no external CDN. SMS archives, balance records, and configuration are stored in the project directory by default. Telegram Bot integration is optional.
 
@@ -148,14 +146,14 @@ The Flask backend listens only on `127.0.0.1:7597`, and the web interface uses n
 
 ### Features
 
-- Automatically discovers a `Quectel USB AT Port` or legacy `SimTech HS-USB AT Port`; no COM number is hard-coded.
+- Automatically discovers a `Quectel USB AT Port`; no COM number is hard-coded.
 - Receives `+CMTI`, `+CMT`, and newly stored messages, with UCS2 Chinese decoding and verification-code detection.
 - Writes each new SMS to `archive.jsonl` in UTF-8 before deleting the original from the module.
 - Reassembles adjacent multipart messages, including the verified case where the final segment arrives first.
 - Provides a local web interface for inbox, sent messages, balance, IMS, registration, signal, and module-storage status.
 - Queries the CTExcel balance by sending `BAL` to `888`; only an explicit cash-balance field is parsed, and charges are never estimated from local send history.
 - Offers an optional Telegram Bot for status, history, balance, confirmed sending, proactive alerts, and restart-safe deduplication.
-- Detects DJI/Quectel/SimTech cellular network adapters in read-only mode; the application does not establish a mobile-data connection.
+- Detects DJI/Quectel cellular network adapters in read-only mode; the application does not establish a mobile-data connection.
 
 ### Safety boundaries
 
@@ -172,7 +170,6 @@ The Flask backend listens only on `127.0.0.1:7597`, and the web interface uses n
 - PowerShell 7
 - Python 3.14
 - DJI QDC507 with `MI_02` bound as `Quectel USB AT Port`
-- Optional legacy device: SIM7600 with its corresponding AT serial driver
 
 The public repository does not include Quectel drivers, Python/PowerShell installers, wheels, or a private migration EXE. See [drivers/README.md](drivers/README.md) for driver-acquisition and binding boundaries.
 
@@ -219,7 +216,6 @@ In the validated CTExcel roaming scenario on China Telecom in mainland China, SM
 
 The application does not switch the carrier profile for you. See the following notes for read-only diagnostics, controlled configuration, and rollback guidance:
 
-- [CTEXCEL-SMS-DIAGNOSIS.md](CTEXCEL-SMS-DIAGNOSIS.md)
 - [DJI-QDC507-CTEXCEL.md](DJI-QDC507-CTEXCEL.md)
 
 ### Telegram commands
